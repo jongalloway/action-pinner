@@ -1,0 +1,30 @@
+{
+  "$schema": "./schemas/pin-actions.schema.json",
+  "mode": "scan",
+  "include": [".github/workflows/**/*.yml", ".github/workflows/**/*.yaml"],
+  "exclude": [],
+  "repos": [],
+  "includeRepos": [],
+  "excludeActions": [],
+  "excludeRepos": [],
+  "org": {
+    "includePrivate": true,
+    "includeArchived": false
+  },
+  "pr": {
+    "create": true,
+    "branchPrefix": "chore/pin-actions",
+    "title": "Pin GitHub Actions to commit SHAs",
+    "labels": ["security", "dependencies"]
+  },
+  "enforcement": {
+    "enabled": false,
+    "failOnUnpinned": true,
+    "allowActions": [],
+    "exceptions": []
+  },
+  "dependabot": {
+    "addVersionComments": true,
+    "generateConfigSnippet": false
+  }
+}

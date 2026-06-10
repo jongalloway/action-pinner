@@ -1,0 +1,18 @@
+name: "pin-actions"
+description: "Scan and pin unpinned GitHub Actions references to commit SHAs."
+author: "pin-actions contributors"
+inputs:
+  mode:
+    description: "Mode to run (scan|fix|enforce|pr)"
+    required: false
+    default: "scan"
+  config:
+    description: "Path to .pin-actions.json"
+    required: false
+    default: ".pin-actions.json"
+  path:
+    description: "Workflow file, directory, or glob to scan"
+    required: false
+runs:
+  using: "node20"
+  main: "../dist/index.js"

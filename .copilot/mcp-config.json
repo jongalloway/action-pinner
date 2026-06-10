@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "squad_state": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@bradygaster/squad-cli",
+        "state-mcp"
+      ]
+    },
+    "EXAMPLE-github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@anthropic/github-mcp-server"
+      ],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}

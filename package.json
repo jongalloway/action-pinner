@@ -1,0 +1,42 @@
+{
+  "name": "pin-actions",
+  "version": "0.1.0",
+  "description": "Modern, maintained utility for pinning GitHub Actions to commit SHAs.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "pin-actions": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "lint": "tsc --noEmit -p tsconfig.json"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "github-actions",
+    "security",
+    "supply-chain",
+    "dependabot",
+    "cli"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@octokit/rest": "^22.0.0",
+    "commander": "^14.0.0",
+    "fast-glob": "^3.3.3",
+    "simple-git": "^3.28.0",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.1",
+    "rimraf": "^6.0.1",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

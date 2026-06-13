@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pin-actions.dev/schema/pin-actions.schema.json",
+  "title": "pin-actions configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["scan", "fix", "enforce", "pr"]
+    },
+    "include": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "exclude": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "repos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "includeRepos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "excludeActions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "excludeRepos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "org": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["org", "user"] },
+        "includePrivate": { "type": "boolean" },
+        "includeArchived": { "type": "boolean" }
+      }
+    },
+    "pr": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": { "type": "boolean" },
+        "branchPrefix": { "type": "string" },
+        "title": { "type": "string" },
+        "labels": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "reviewers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "assignees": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "bodyTemplate": { "type": "string" }
+      }
+    },
+    "enforcement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "failOnUnpinned": { "type": "boolean" },
+        "allowActions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "exceptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["action"],
+            "properties": {
+              "action": { "type": "string" },
+              "ref": { "type": "string" },
+              "workflow": { "type": "string" },
+              "reason": { "type": "string" },
+              "justification": { "type": "string" },
+              "expiresAt": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "dependabot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "addVersionComments": { "type": "boolean" },
+        "generateConfigSnippet": { "type": "boolean" }
+      }
+    },
+    "githubApiUrl": {
+      "type": "string",
+      "description": "Custom GitHub API base URL for GitHub Enterprise Server (GHES). Defaults to https://api.github.com."
+    },
+    "useNetrc": {
+      "type": "boolean",
+      "description": "Use credentials from ~/.netrc for authentication instead of a token."
+    }
+  }
+}

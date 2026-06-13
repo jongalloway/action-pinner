@@ -26,41 +26,6 @@ export interface EnforcementException {
   expiresAt?: string;
 }
 
-export type EnforcementFindingReason =
-  | "allowlist"
-  | "exception"
-  | "expired-exception"
-  | "invalid-exception"
-  | "unpinned";
-
-export interface EnforcementFinding extends ActionReference {
-  outcome: "allowed" | "violation";
-  reason: EnforcementFindingReason;
-  message: string;
-  matchedPattern?: string;
-  exception?: EnforcementException;
-}
-
-export interface EnforcementExceptionIssue {
-  index: number;
-  reason: "invalid-action" | "invalid-ref" | "invalid-workflow" | "invalid-expiry" | "expired";
-  message: string;
-  exception: EnforcementException;
-}
-
-export interface EnforcementResult {
-  summary: ScanSummary & {
-    allowedCount: number;
-    violationCount: number;
-    invalidExceptionCount: number;
-  };
-  references: ActionReference[];
-  allowed: EnforcementFinding[];
-  violations: EnforcementFinding[];
-  invalidExceptions: EnforcementExceptionIssue[];
-  compliant: boolean;
-}
-
 export interface DependabotConfig {
   addVersionComments: boolean;
   generateConfigSnippet: boolean;
@@ -144,6 +109,51 @@ export interface ScanSummary {
   referencesFound: number;
   unpinnedFound: number;
 }
+
+export type EnforcementFindingOutcome = "allowed" | "violation";
+export type EnforcementFindingReason =
+  | "allowlist"
+  | "exception"
+  | "unpinned"
+  | "expired-exception"
+  | "invalid-exception";
+export type EnforcementExceptionIssueReason =
+  | "expired"
+  | "invalid-action"
+  | "invalid-ref"
+  | "invalid-workflow"
+  | "invalid-expiry";
+
+export interface EnforcementFinding extends ActionReference {
+  outcome: EnforcementFindingOutcome;
+  reason: EnforcementFindingReason;
+  message: string;
+  exception?: EnforcementException;
+  matchedPattern?: string;
+}
+
+export interface EnforcementExceptionIssue {
+  index: number;
+  reason: EnforcementExceptionIssueReason;
+  message: string;
+  exception: EnforcementException;
+}
+
+export interface EnforcementSummary extends ScanSummary {
+  allowedCount: number;
+  violationCount: number;
+  invalidExceptionCount: number;
+}
+
+export interface EnforcementResult {
+  summary: EnforcementSummary;
+  references: ActionReference[];
+  allowed: EnforcementFinding[];
+  violations: EnforcementFinding[];
+  invalidExceptions: EnforcementExceptionIssue[];
+  compliant: boolean;
+}
+
 
 export interface MultiRepoEnforcementEntry {
   repository: string;

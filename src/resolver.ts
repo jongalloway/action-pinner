@@ -1,7 +1,7 @@
 import { Octokit } from "@octokit/rest";
 import type { ActionReference, ResolutionResult } from "./types.js";
 import { AmbiguousRefError, UnresolvedRefError } from "./types.js";
-import { applyNetrcAuth, redactNetrcAuth } from "./netrc-auth.js";
+import { getNetrcCredentials, redactNetrcAuth } from "./netrc-auth.js";
 
 export interface CommitLookupClient {
   repos: {
@@ -42,10 +42,9 @@ export function normalizeGithubApiUrl(url?: string): string {
   }
 
   // If it's an enterprise URL without /api/v3, add it
-  if (
-    !normalized.includes("/api/v3") &&
-    !normalized.includes("api.github.com")
-  ) {
+  // Extract the hostname to check precisely (avoid substring false matches like evil.api.github.com)
+  const hostname = normalized.replace(/^https?:\/\//, "").split("/")[0];
+  if (!normalized.includes("/api/v3") && hostname !== "api.github.com") {
     normalized = `${normalized}/api/v3`;
   }
 
@@ -62,11 +61,12 @@ export function buildResolutionKey(reference: Pick<ActionReference, "action" | "
 }
 
 export class ActionResolver {
-  private readonly octokit: CommitLookupClient;
+  private octokit: CommitLookupClient;
   private readonly cache = new Map<string, ResolutionResult>();
   private readonly inFlight = new Map<string, Promise<ResolutionResult>>();
   private readonly verbose: boolean;
   private authMethod: string;
+  private readonly initPromise: Promise<void>;
 
   public constructor(token?: string, client?: CommitLookupClient, options?: ResolverOptions) {
     this.verbose = options?.verbose ?? false;
@@ -74,29 +74,42 @@ export class ActionResolver {
 
     if (client) {
       this.octokit = client;
+      this.initPromise = Promise.resolve();
     } else {
       const apiBaseUrl = normalizeGithubApiUrl(options?.apiBaseUrl);
-      const octokitOptions: Record<string, unknown> = {
-        baseUrl: apiBaseUrl
-      };
 
-      // Determine authentication method and precedence
       if (token) {
-        octokitOptions.auth = token;
+        this.octokit = new Octokit({ auth: token, baseUrl: apiBaseUrl }) as CommitLookupClient;
         this.authMethod = "token";
+        this.initPromise = Promise.resolve();
       } else if (options?.useNetrc) {
-        // Will apply netrc auth asynchronously if available
-        this.authMethod = "netrc (pending)";
+        this.authMethod = "netrc";
+        // Placeholder until init resolves; initNetrcAuth will replace this with an authenticated client
+        this.octokit = new Octokit({ baseUrl: apiBaseUrl }) as CommitLookupClient;
+        this.initPromise = this.initNetrcAuth(apiBaseUrl);
       } else {
+        this.octokit = new Octokit({ baseUrl: apiBaseUrl }) as CommitLookupClient;
         this.authMethod = "anonymous (rate-limited)";
+        this.initPromise = Promise.resolve();
       }
-
-      this.octokit = new Octokit(octokitOptions) as CommitLookupClient;
     }
 
     if (this.verbose) {
       console.log(`GitHub API base URL: ${this.getBaseUrl()}`);
       console.log(`Authentication method: ${this.authMethod}`);
+    }
+  }
+
+  private async initNetrcAuth(apiBaseUrl: string): Promise<void> {
+    const host = new URL(apiBaseUrl).hostname;
+    const creds = await getNetrcCredentials(host);
+    if (creds) {
+      this.octokit = new Octokit({
+        auth: `${creds.login}:${creds.password}`,
+        baseUrl: apiBaseUrl
+      }) as CommitLookupClient;
+    } else {
+      this.authMethod = "anonymous (rate-limited)";
     }
   }
 
@@ -106,6 +119,7 @@ export class ActionResolver {
   }
 
   public async resolve(reference: ActionReference): Promise<ResolutionResult> {
+    await this.initPromise;
     if (!reference.ref) {
       throw new Error(`Cannot resolve missing ref for ${reference.raw}`);
     }
@@ -169,7 +183,7 @@ export class ActionResolver {
         // Handle authentication errors
         if (status === 401) {
           const message =
-            this.authMethod.includes("netrc") || this.authMethod.includes("netrc (pending)")
+            this.authMethod === "netrc"
               ? "Authentication failed with netrc credentials. Check machine entry in ~/.netrc"
               : "Invalid or expired token. Check PIN_ACTIONS_TOKEN or CLI --token";
           throw new Error(message);

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Octokit } from "@octokit/rest";
 import { matchesAnyPattern } from "./pattern-match.js";
 import { normalizeGithubApiUrl } from "./resolver.js";
@@ -99,7 +100,9 @@ export async function listOwnerRepositories(
     options.target.toLowerCase(),
     options.includePrivate ? "private" : "public",
     options.includeArchived ? "archived" : "active",
-    token ? "auth" : "anonymous"
+    token
+      ? `auth:${createHash("sha256").update(token).digest("hex").substring(0, 16)}`
+      : "anonymous"
   ].join("|");
   const cached = repositoryEnumerationCache.get(cacheKey);
   if (cached) {

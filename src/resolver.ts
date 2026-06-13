@@ -1,11 +1,7 @@
 import { Octokit } from "@octokit/rest";
 import type { ActionReference, ResolutionResult } from "./types.js";
 import { AmbiguousRefError, UnresolvedRefError } from "./types.js";
-<<<<<<< HEAD
-import { getNetrcCredentials, encodeNetrcAuth, applyNetrcAuth, redactNetrcAuth } from "./netrc-auth.js";
-=======
 import { getNetrcCredentials, redactNetrcAuth } from "./netrc-auth.js";
->>>>>>> origin/main
 
 export interface CommitLookupClient {
   repos: {
@@ -70,11 +66,7 @@ export class ActionResolver {
   private readonly inFlight = new Map<string, Promise<ResolutionResult>>();
   private readonly verbose: boolean;
   private authMethod: string;
-<<<<<<< HEAD
-  private netrcInit: Promise<void> | null = null;
-=======
   private readonly initPromise: Promise<void>;
->>>>>>> origin/main
 
   public constructor(token?: string, client?: CommitLookupClient, options?: ResolverOptions) {
     this.verbose = options?.verbose ?? false;
@@ -89,30 +81,16 @@ export class ActionResolver {
       if (token) {
         this.octokit = new Octokit({ auth: token, baseUrl: apiBaseUrl }) as CommitLookupClient;
         this.authMethod = "token";
-<<<<<<< HEAD
-        this.octokit = new Octokit(octokitOptions) as CommitLookupClient;
-      } else if (options?.useNetrc) {
-        // Create an initial unauthenticated client; netrc credentials will be
-        // loaded asynchronously and the client replaced before the first request.
-        this.octokit = new Octokit(octokitOptions) as CommitLookupClient;
-        this.authMethod = "netrc (pending)";
-        this.netrcInit = this.initNetrcAuth(apiBaseUrl);
-=======
         this.initPromise = Promise.resolve();
       } else if (options?.useNetrc) {
         this.authMethod = "netrc";
         // Placeholder until init resolves; initNetrcAuth will replace this with an authenticated client
         this.octokit = new Octokit({ baseUrl: apiBaseUrl }) as CommitLookupClient;
         this.initPromise = this.initNetrcAuth(apiBaseUrl);
->>>>>>> origin/main
       } else {
         this.octokit = new Octokit({ baseUrl: apiBaseUrl }) as CommitLookupClient;
         this.authMethod = "anonymous (rate-limited)";
-<<<<<<< HEAD
-        this.octokit = new Octokit(octokitOptions) as CommitLookupClient;
-=======
         this.initPromise = Promise.resolve();
->>>>>>> origin/main
       }
     }
 
@@ -123,19 +101,6 @@ export class ActionResolver {
   }
 
   private async initNetrcAuth(apiBaseUrl: string): Promise<void> {
-<<<<<<< HEAD
-    try {
-      const host = new URL(apiBaseUrl).hostname;
-      const creds = await getNetrcCredentials(host);
-      if (creds) {
-        const auth = `Basic ${encodeNetrcAuth(creds.login, creds.password)}`;
-        this.octokit = new Octokit({ baseUrl: apiBaseUrl, auth }) as CommitLookupClient;
-        this.authMethod = "netrc";
-      } else {
-        this.authMethod = "anonymous (rate-limited)";
-      }
-    } catch {
-=======
     const host = new URL(apiBaseUrl).hostname;
     const creds = await getNetrcCredentials(host);
     if (creds) {
@@ -144,7 +109,6 @@ export class ActionResolver {
         baseUrl: apiBaseUrl
       }) as CommitLookupClient;
     } else {
->>>>>>> origin/main
       this.authMethod = "anonymous (rate-limited)";
     }
   }
@@ -161,11 +125,6 @@ export class ActionResolver {
     }
     if (reference.kind !== "tag-or-branch" || SHA_PATTERN.test(reference.ref)) {
       throw new Error(`Cannot resolve non-resolvable ref for ${reference.raw}`);
-    }
-
-    if (this.netrcInit) {
-      await this.netrcInit;
-      this.netrcInit = null;
     }
 
     const cacheKey = buildResolutionKey(reference);

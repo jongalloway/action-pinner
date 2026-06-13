@@ -3,7 +3,6 @@ import { Command } from "commander";
 import { simpleGit } from "simple-git";
 import { loadConfig } from "./config.js";
 import { generateDependabotActionsSnippet } from "./dependabot.js";
-import { evaluateEnforcement } from "./enforcement.js";
 import { pinReferences } from "./pinner.js";
 import { createPullRequestBranch, publishPullRequest } from "./pr.js";
 import { buildRunFingerprint, formatEvidence } from "./report.js";
@@ -18,7 +17,6 @@ import {
 import type {
   EnforcementResult,
   EnforcementException,
-  EnforcementResult,
   FilePatch,
   MultiRepoEnforcementResult,
   PinActionsConfig,
@@ -334,23 +332,6 @@ See docs/ENTERPRISE.md for enterprise deployments.
         ...config.enforcement.exceptions,
         ...parseExceptionRules(opts.exception)
       ];
-<<<<<<< HEAD
-      const scanResult = await scanWorkflows(include, process.cwd(), {
-        excludePatterns: exclude,
-        includeActions,
-        excludeActions
-      });
-      const policy = { allowActions, exceptions };
-      const result = evaluateEnforcement(scanResult, policy);
-      const toolVersion = await getToolVersion();
-      const fingerprint = buildRunFingerprint(config, toolVersion);
-      printRepoTargetSummary(opts, config);
-      printEnforcement(result, config, fingerprint, Boolean(opts.json));
-      if (
-        (result.violations.length > 0 || result.invalidExceptions.length > 0) &&
-        config.enforcement.failOnUnpinned
-      ) {
-=======
       const token = opts.token || process.env.PIN_ACTIONS_TOKEN || process.env.GITHUB_TOKEN;
       const targets = await resolveRepoTargets(opts, config, token);
       const requestedMultiRepo =
@@ -441,7 +422,6 @@ See docs/ENTERPRISE.md for enterprise deployments.
       );
       printEnforcement(result, fingerprint, runDetails);
       if (!result.compliant && config.enforcement.failOnUnpinned) {
->>>>>>> origin/main
         process.exitCode = 1;
       }
     });
@@ -895,44 +875,6 @@ function toScanOutput(
   };
 }
 
-<<<<<<< HEAD
-function printEnforcement(
-  result: EnforcementResult,
-  _config: PinActionsConfig,
-  fingerprint: ReturnType<typeof buildRunFingerprint>,
-  json = false
-) {
-  if (json) {
-    console.log(
-      JSON.stringify(
-        {
-          summary: result.summary,
-          references: result.references,
-          allowed: result.allowed,
-          violations: result.violations,
-          invalidExceptions: result.invalidExceptions,
-          compliant: result.compliant,
-          run: fingerprint
-        },
-        null,
-        2
-      )
-    );
-    return;
-  }
-
-  if (result.invalidExceptions.length > 0) {
-    console.log(`Invalid or expired exceptions:`);
-    for (const issue of result.invalidExceptions) {
-      console.log(`- ${issue.message}`);
-    }
-  }
-
-  if (result.allowed.length > 0) {
-    console.log(`Allowed (${result.allowed.length}):`);
-    for (const entry of result.allowed) {
-      console.log(`- ${toDisplayPath(entry.filePath)}:${entry.line} -> ${entry.raw}`);
-=======
 function toEnforcementOutput(
   result: EnforcementResult,
   fingerprint: ReturnType<typeof buildRunFingerprint>,
@@ -967,26 +909,10 @@ function printEnforcementSections(
     console.log(`${indent}Invalid or expired exceptions:`);
     for (const issue of result.invalidExceptions) {
       console.log(`${indent}- ${issue.message}`);
->>>>>>> origin/main
     }
   }
 
   if (result.violations.length > 0) {
-<<<<<<< HEAD
-    console.log(`Violations:`);
-    for (const entry of result.violations) {
-      console.log(`- ${toDisplayPath(entry.filePath)}:${entry.line} -> ${entry.raw}`);
-    }
-  }
-
-  if (result.violations.length === 0 && result.invalidExceptions.length === 0) {
-    console.log("No enforcement violations.");
-  } else {
-    console.log("Enforcement failed.");
-  }
-
-  printRunFingerprint(fingerprint);
-=======
     console.log(`${indent}Violations:`);
     for (const entry of result.violations) {
       console.log(`${indent}- ${formatEnforcementFinding(entry)}`);
@@ -996,7 +922,6 @@ function printEnforcementSections(
 
 function formatEnforcementFinding(entry: EnforcementResult["allowed"][number]): string {
   return `${toDisplayPath(entry.filePath)}:${entry.line} -> ${entry.raw} (${entry.message})`;
->>>>>>> origin/main
 }
 
 function countUpdatedReferences(patches: FilePatch[]): number {

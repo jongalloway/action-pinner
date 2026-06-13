@@ -284,15 +284,11 @@ function parseEnforcementExceptions(
       justification:
         entry.justification === undefined
           ? undefined
-<<<<<<< HEAD
-          : parseString(entry.justification, path, `enforcement.exceptions[${index}].justification`),
-=======
           : parseString(
             entry.justification,
             path,
             `enforcement.exceptions[${index}].justification`
           ),
->>>>>>> origin/main
       expiresAt:
         entry.expiresAt === undefined
           ? undefined

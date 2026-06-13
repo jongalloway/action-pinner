@@ -253,7 +253,7 @@ function parseEnforcementExceptions(
 
     assertNoUnknownKeys(
       entry,
-      ["action", "ref", "workflow", "reason"],
+      ["action", "ref", "workflow", "reason", "justification", "expiresAt"],
       path,
       `enforcement.exceptions[${index}]`
     );
@@ -274,7 +274,15 @@ function parseEnforcementExceptions(
       reason:
         entry.reason === undefined
           ? undefined
-          : parseString(entry.reason, path, `enforcement.exceptions[${index}].reason`)
+          : parseString(entry.reason, path, `enforcement.exceptions[${index}].reason`),
+      justification:
+        entry.justification === undefined
+          ? undefined
+          : parseString(entry.justification, path, `enforcement.exceptions[${index}].justification`),
+      expiresAt:
+        entry.expiresAt === undefined
+          ? undefined
+          : parseString(entry.expiresAt, path, `enforcement.exceptions[${index}].expiresAt`)
     };
   });
 }

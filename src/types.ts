@@ -22,6 +22,8 @@ export interface EnforcementException {
   ref?: string;
   workflow?: string;
   reason?: string;
+  justification?: string;
+  expiresAt?: string;
 }
 
 export interface DependabotConfig {
@@ -105,6 +107,73 @@ export interface ScanSummary {
   filesScanned: number;
   referencesFound: number;
   unpinnedFound: number;
+}
+
+export type EnforcementFindingOutcome = "allowed" | "violation";
+export type EnforcementFindingReason =
+  | "allowlist"
+  | "exception"
+  | "unpinned"
+  | "expired-exception"
+  | "invalid-exception";
+export type EnforcementExceptionIssueReason =
+  | "expired"
+  | "invalid-action"
+  | "invalid-ref"
+  | "invalid-workflow"
+  | "invalid-expiry";
+
+export interface EnforcementFinding extends ActionReference {
+  outcome: EnforcementFindingOutcome;
+  reason: EnforcementFindingReason;
+  message: string;
+  exception?: EnforcementException;
+  matchedPattern?: string;
+}
+
+export interface EnforcementExceptionIssue {
+  index: number;
+  reason: EnforcementExceptionIssueReason;
+  message: string;
+  exception: EnforcementException;
+}
+
+export interface EnforcementSummary extends ScanSummary {
+  allowedCount: number;
+  violationCount: number;
+  invalidExceptionCount: number;
+}
+
+export interface EnforcementResult {
+  summary: EnforcementSummary;
+  references: ActionReference[];
+  allowed: EnforcementFinding[];
+  violations: EnforcementFinding[];
+  invalidExceptions: EnforcementExceptionIssue[];
+  compliant: boolean;
+}
+
+export interface MultiRepoEnforcementEntry {
+  repository: string;
+  defaultBranch: string;
+  scan: ScanResult;
+  enforcement: EnforcementResult;
+}
+
+export interface MultiRepoEnforcementResult {
+  repositories: MultiRepoEnforcementEntry[];
+  summary: {
+    repositoriesScanned: number;
+    repositoriesWithViolations: number;
+    filesScanned: number;
+    referencesFound: number;
+    unpinnedFound: number;
+    allowedCount: number;
+    violationCount: number;
+    invalidExceptionCount: number;
+  };
+  invalidExceptions: EnforcementExceptionIssue[];
+  compliant: boolean;
 }
 
 export interface ResolutionErrorDetails {

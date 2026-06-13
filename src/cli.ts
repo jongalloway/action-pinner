@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { simpleGit } from "simple-git";
 import { loadConfig } from "./config.js";
 import { generateDependabotActionsSnippet } from "./dependabot.js";
+import { evaluateEnforcement } from "./enforcement.js";
 import { pinReferences } from "./pinner.js";
 import { createPullRequestBranch, publishPullRequest } from "./pr.js";
 import { buildRunFingerprint, formatEvidence, formatFingerprint } from "./report.js";
@@ -11,6 +12,7 @@ import { scanWorkflows } from "./scanner.js";
 import { scanRepositories, type MultiRepoScanResult } from "./multi-repo-scanner.js";
 import type {
   EnforcementException,
+  EnforcementResult,
   FilePatch,
   PinActionsConfig,
   ScanResult
@@ -278,19 +280,21 @@ See docs/ENTERPRISE.md for enterprise deployments.
         ...config.enforcement.exceptions,
         ...parseExceptionRules(opts.exception)
       ];
-      const result = applyEnforcementExceptions(
-        await scanWorkflows(include, process.cwd(), {
-          excludePatterns: exclude,
-          includeActions,
-          excludeActions
-        }),
-        exceptions
-      );
+      const scanResult = await scanWorkflows(include, process.cwd(), {
+        excludePatterns: exclude,
+        includeActions,
+        excludeActions
+      });
+      const policy = { allowActions, exceptions };
+      const result = evaluateEnforcement(scanResult, policy);
       const toolVersion = await getToolVersion();
       const fingerprint = buildRunFingerprint(config, toolVersion);
       printRepoTargetSummary(opts, config);
-      printScan(result, config, fingerprint, Boolean(opts.json));
-      if (result.unpinned.length > 0 && config.enforcement.failOnUnpinned) {
+      printEnforcement(result, config, fingerprint, Boolean(opts.json));
+      if (
+        (result.violations.length > 0 || result.invalidExceptions.length > 0) &&
+        config.enforcement.failOnUnpinned
+      ) {
         process.exitCode = 1;
       }
     });
@@ -659,6 +663,61 @@ function toScanOutput(
     unpinned: result.unpinned,
     run: fingerprint
   };
+}
+
+function printEnforcement(
+  result: EnforcementResult,
+  _config: PinActionsConfig,
+  fingerprint: ReturnType<typeof buildRunFingerprint>,
+  json = false
+) {
+  if (json) {
+    console.log(
+      JSON.stringify(
+        {
+          summary: result.summary,
+          references: result.references,
+          allowed: result.allowed,
+          violations: result.violations,
+          invalidExceptions: result.invalidExceptions,
+          compliant: result.compliant,
+          run: fingerprint
+        },
+        null,
+        2
+      )
+    );
+    return;
+  }
+
+  if (result.invalidExceptions.length > 0) {
+    console.log(`Invalid or expired exceptions:`);
+    for (const issue of result.invalidExceptions) {
+      console.log(`- ${issue.message}`);
+    }
+  }
+
+  if (result.allowed.length > 0) {
+    console.log(`Allowed (${result.allowed.length}):`);
+    for (const entry of result.allowed) {
+      console.log(`- ${toDisplayPath(entry.filePath)}:${entry.line} -> ${entry.raw}`);
+    }
+  }
+
+  if (result.violations.length > 0) {
+    console.log(`Violations:`);
+    for (const entry of result.violations) {
+      console.log(`- ${toDisplayPath(entry.filePath)}:${entry.line} -> ${entry.raw}`);
+    }
+  }
+
+  if (result.violations.length === 0 && result.invalidExceptions.length === 0) {
+    console.log("No enforcement violations.");
+  } else {
+    console.log("Enforcement failed.");
+  }
+
+  printRunFingerprint(fingerprint);
 }
 
 function countUpdatedReferences(patches: FilePatch[]): number {

@@ -99,7 +99,9 @@
               "action": { "type": "string" },
               "ref": { "type": "string" },
               "workflow": { "type": "string" },
-              "reason": { "type": "string" }
+              "reason": { "type": "string" },
+              "justification": { "type": "string" },
+              "expiresAt": { "type": "string" }
             }
           }
         }

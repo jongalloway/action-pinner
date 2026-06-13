@@ -13,6 +13,38 @@ inputs:
   path:
     description: "Workflow file, directory, or glob to scan"
     required: false
+  exclude_path:
+    description: "Workflow file, directory, or glob to exclude"
+    required: false
+  include_action:
+    description: "Comma-separated or newline-delimited action patterns to include"
+    required: false
+  exclude_action:
+    description: "Comma-separated or newline-delimited action patterns to exclude"
+    required: false
+  allow_actions:
+    description: "Comma-separated or newline-delimited enforcement allowlist patterns"
+    required: false
+  exception_rules:
+    description: "Comma-separated or newline-delimited enforcement exception rules (<action>[@ref][::workflow-glob])"
+    required: false
+  json:
+    description: "Emit JSON output"
+    required: false
+    default: "false"
+outputs:
+  compliant:
+    description: "Whether enforcement completed without violations or invalid exceptions"
+  allowed_count:
+    description: "Number of unpinned refs allowed by allowlists or exceptions"
+  violation_count:
+    description: "Number of violating unpinned refs"
+  invalid_exception_count:
+    description: "Number of malformed or expired exceptions"
+  fingerprint:
+    description: "Deterministic run fingerprint"
+  config_hash:
+    description: "Deterministic config hash"
 runs:
   using: "node20"
   main: "../dist/index.js"

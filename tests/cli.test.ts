@@ -154,4 +154,101 @@ describe("runCli", () => {
     await runCli(["enforce", "--config", configPath, "--path", pinnedPath]);
     expect(process.exitCode).toBeUndefined();
   });
+
+  it("enforce reports allowlisted refs as allowed in JSON output", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    tempDirs.push(root);
+
+    const workflowDir = join(root, ".github", "workflows");
+    await mkdir(workflowDir, { recursive: true });
+    const workflowPath = join(workflowDir, "allowed.yml");
+    await writeFile(
+      workflowPath,
+      [
+        "jobs:",
+        "  build:",
+        "    steps:",
+        "      - uses: actions/checkout@v4"
+      ].join("\n"),
+      "utf8"
+    );
+
+    const logs: string[] = [];
+    vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+
+    await runCli([
+      "enforce",
+      "--json",
+      "--path",
+      workflowPath,
+      "--allow-action",
+      "actions/checkout"
+    ]);
+
+    expect(process.exitCode).toBeUndefined();
+    const output = JSON.parse(logs[0]);
+    expect(output.compliant).toBe(true);
+    expect(output.summary.allowedCount).toBe(1);
+    expect(output.summary.violationCount).toBe(0);
+    expect(output.allowed).toHaveLength(1);
+    expect(output.allowed[0].reason).toBe("allowlist");
+  });
+
+  it("enforce fails closed on expired exceptions with clear messaging", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    tempDirs.push(root);
+
+    const workflowDir = join(root, ".github", "workflows");
+    await mkdir(workflowDir, { recursive: true });
+    const workflowPath = join(workflowDir, "legacy.yml");
+    await writeFile(
+      workflowPath,
+      [
+        "jobs:",
+        "  build:",
+        "    steps:",
+        "      - uses: actions/upload-artifact@v4"
+      ].join("\n"),
+      "utf8"
+    );
+
+    const configPath = join(root, ".pin-actions.json");
+    await writeFile(
+      configPath,
+      JSON.stringify(
+        {
+          enforcement: {
+            exceptions: [
+              {
+                action: "actions/upload-artifact",
+                ref: "v4",
+                workflow: "**/legacy.yml",
+                justification: "Legacy workflow still migrating",
+                expiresAt: "2000-01-01"
+              }
+            ]
+          }
+        },
+        null,
+        2
+      ),
+      "utf8"
+    );
+
+    const logs: string[] = [];
+    vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+
+    await runCli(["enforce", "--config", configPath, "--path", workflowPath]);
+
+    expect(process.exitCode).toBe(1);
+    const output = logs.join("\n");
+    expect(output).toContain("Enforcement failed.");
+    expect(output).toContain("Invalid or expired exceptions:");
+    expect(output).toContain("expired at 2000-01-01");
+    expect(output).toContain("Violations:");
+  });
 });

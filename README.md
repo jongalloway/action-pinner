@@ -113,7 +113,6 @@ Pin refs, create a branch, and publish a pull request using the `pr` config bloc
 
 ```bash
 pin-actions pr
-pin-actions pr --open
 pin-actions pr --path ".github/workflows"
 pin-actions pr --continue-on-error --fail-on-ambiguous
 ```
@@ -121,7 +120,6 @@ pin-actions pr --continue-on-error --fail-on-ambiguous
 Flags:
 
 - All `scan` flags except `--json`
-- `--open`: force PR creation even when `pr.create` is `false` in config
 - `--continue-on-error`: skip unresolved refs instead of failing the run
 - `--fail-on-ambiguous`: fail if a ref resolves ambiguously
 
@@ -247,7 +245,7 @@ Notes:
 
 - CLI flags override config values.
 - `reason` and `expiresAt` make exceptions easier to review and clean up.
-- `pr.create: false` creates the branch and commit without publishing a PR unless you pass `--open`.
+- `pr.create: false` creates the branch and commit without publishing a PR.
 
 ## Authentication
 

@@ -5,13 +5,20 @@ import { loadConfig } from "./config.js";
 import { generateDependabotActionsSnippet } from "./dependabot.js";
 import { pinReferences } from "./pinner.js";
 import { createPullRequestBranch, publishPullRequest } from "./pr.js";
-import { buildRunFingerprint, formatEvidence, formatFingerprint } from "./report.js";
+import { buildRunFingerprint, formatEvidence } from "./report.js";
 import { ActionResolver } from "./resolver.js";
 import { scanWorkflows } from "./scanner.js";
 import { scanRepositories, type MultiRepoScanResult } from "./multi-repo-scanner.js";
+import {
+  applyEnforcementExceptions,
+  evaluateEnforcement,
+  evaluateMultiRepoEnforcement
+} from "./enforcement.js";
 import type {
+  EnforcementResult,
   EnforcementException,
   FilePatch,
+  MultiRepoEnforcementResult,
   PinActionsConfig,
   ScanResult
 } from "./types.js";
@@ -19,8 +26,22 @@ import { AmbiguousRefError, UnresolvedRefError } from "./types.js";
 import { getToolVersion } from "./version.js";
 import { resolveWorkflowPatterns, toDisplayPath } from "./workflow-paths.js";
 import { safeLog } from "./logging.js";
-import { matchesPattern } from "./pattern-match.js";
-import { filterRepositories, listOrgRepositories } from "./org.js";
+import {
+  filterRepositoryMetadata,
+  listOwnerRepositories,
+  type RepositoryMetadata,
+  type RepositoryOwnerType
+} from "./org.js";
+
+interface RunExecutionDetails {
+  command: "scan" | "fix" | "pr" | "enforce";
+  target: "local" | "multi-repo";
+  output: "text" | "json";
+  dryRun?: boolean;
+  continueOnError?: boolean;
+  failOnAmbiguous?: boolean;
+  prCreate?: boolean;
+}
 
 export async function runCli(argv: string[] = process.argv.slice(2)) {
   const program = new Command();
@@ -68,8 +89,9 @@ EXAMPLES
   Enforce policy in CI:
     $ pin-actions enforce
 
-  Multi-repo targeting (discovery surface):
+  Multi-repo targeting:
     $ pin-actions scan --github-org acme --include-repo "platform-*" --exclude-repo "*-archive"
+    $ pin-actions scan --github-user octocat --include-repo "demo-*"
 
   Filter workflow paths and actions:
     $ pin-actions scan --exclude-path ".github/workflows/legacy/**" --exclude-action "actions/cache"
@@ -102,6 +124,7 @@ See docs/ENTERPRISE.md for enterprise deployments.
     .option("--exclude-action <pattern...>", "Exclude action refs matching these patterns")
     .option("--repo <repo...>", "Explicit repository targets (owner/repo) for multi-repo scans")
     .option("--github-org <org>", "Organization to enumerate repositories from")
+    .option("--github-user <user>", "User account to enumerate repositories from")
     .option("--include-repo <pattern...>", "Include only repositories matching these patterns")
     .option("--exclude-repo <pattern...>", "Exclude repositories matching these patterns")
     .option("--json", "Emit JSON output", false)
@@ -119,13 +142,13 @@ See docs/ENTERPRISE.md for enterprise deployments.
       const token = opts.token || process.env.PIN_ACTIONS_TOKEN || process.env.GITHUB_TOKEN;
       const targets = await resolveRepoTargets(opts, config, token);
       const requestedMultiRepo =
-        Boolean(targets.org) ||
+        Boolean(targets.targetName) ||
         targets.explicitRepositories.length > 0 ||
         targets.includePatterns.length > 0 ||
         targets.excludePatterns.length > 0;
 
       if (targets.repositories.length > 0) {
-        const rawResult = await scanRepositories(targets.repositories, {
+        const rawResult = await scanRepositories(targets.repositoryTargets, {
           includePatterns: include,
           excludePatterns: exclude,
           includeActions,
@@ -137,7 +160,11 @@ See docs/ENTERPRISE.md for enterprise deployments.
           rawResult,
           config.enforcement.exceptions
         );
-        printMultiRepoScan(result, targets, fingerprint, Boolean(opts.json));
+        printMultiRepoScan(result, targets, fingerprint, {
+          command: "scan",
+          target: "multi-repo",
+          output: opts.json ? "json" : "text"
+        });
         return;
       }
 
@@ -145,6 +172,15 @@ See docs/ENTERPRISE.md for enterprise deployments.
         printMultiRepoScan(
           {
             repositories: [],
+            consolidated: {
+              summary: {
+                filesScanned: 0,
+                referencesFound: 0,
+                unpinnedFound: 0
+              },
+              references: [],
+              unpinned: []
+            },
             summary: {
               repositoriesScanned: 0,
               repositoriesWithUnpinned: 0,
@@ -155,7 +191,11 @@ See docs/ENTERPRISE.md for enterprise deployments.
           },
           targets,
           fingerprint,
-          Boolean(opts.json)
+          {
+            command: "scan",
+            target: "multi-repo",
+            output: opts.json ? "json" : "text"
+          }
         );
         return;
       }
@@ -168,7 +208,11 @@ See docs/ENTERPRISE.md for enterprise deployments.
         }),
         config.enforcement.exceptions
       );
-      printScan(result, config, fingerprint, Boolean(opts.json));
+      printScan(result, config, fingerprint, {
+        command: "scan",
+        target: "local",
+        output: opts.json ? "json" : "text"
+      });
     });
 
   program
@@ -181,6 +225,7 @@ See docs/ENTERPRISE.md for enterprise deployments.
     .option("--exclude-action <pattern...>", "Exclude action refs matching these patterns")
     .option("--repo <repo...>", "Explicit repository targets (owner/repo) for multi-repo scans")
     .option("--github-org <org>", "Organization to enumerate repositories from")
+    .option("--github-user <user>", "User account to enumerate repositories from")
     .option("--include-repo <pattern...>", "Include only repositories matching these patterns")
     .option("--exclude-repo <pattern...>", "Exclude repositories matching these patterns")
     .option("--continue-on-error", "Skip unresolved refs instead of failing", false)
@@ -221,18 +266,26 @@ See docs/ENTERPRISE.md for enterprise deployments.
         );
         const toolVersion = await getToolVersion();
         const fingerprint = buildRunFingerprint(config, toolVersion);
+        const runDetails: RunExecutionDetails = {
+          command: "fix",
+          target: "local",
+          output: "text",
+          dryRun: Boolean(opts.dryRun),
+          continueOnError: Boolean(opts.continueOnError),
+          failOnAmbiguous: Boolean(opts.failOnAmbiguous)
+        };
 
         if (opts.dryRun) {
           console.log(
             `Dry run complete. ${patches.length} file(s) would be updated across ${countUpdatedReferences(patches)} reference(s).`
           );
-          printDryRunPreview(patches, fingerprint);
+          printDryRunPreview(patches, fingerprint, runDetails);
         } else {
           console.log(
             `Updated ${patches.length} file(s) across ${countUpdatedReferences(patches)} reference(s).`
           );
           printEvidenceReport(patches);
-          printRunFingerprint(fingerprint);
+          printRunFingerprint(fingerprint, runDetails);
         }
       } catch (error) {
         if (error instanceof AmbiguousRefError || error instanceof UnresolvedRefError) {
@@ -254,6 +307,7 @@ See docs/ENTERPRISE.md for enterprise deployments.
     .option("--exclude-action <pattern...>", "Exclude action refs matching these patterns")
     .option("--repo <repo...>", "Explicit repository targets (owner/repo) for multi-repo scans")
     .option("--github-org <org>", "Organization to enumerate repositories from")
+    .option("--github-user <user>", "User account to enumerate repositories from")
     .option("--include-repo <pattern...>", "Include only repositories matching these patterns")
     .option("--exclude-repo <pattern...>", "Exclude repositories matching these patterns")
     .option("--allow-action <pattern...>", "Enforcement allowlist patterns")
@@ -272,25 +326,102 @@ See docs/ENTERPRISE.md for enterprise deployments.
       const include = resolveIncludePatterns(opts.path, config.include);
       const exclude = resolveExcludePatterns(opts.excludePath, config.exclude);
       const allowActions = resolveStringList(opts.allowAction, config.enforcement.allowActions);
-      const includeActions = resolveStringList(opts.includeAction, allowActions);
+      const includeActions = resolveStringList(opts.includeAction, []);
       const excludeActions = resolveStringList(opts.excludeAction, config.excludeActions);
       const exceptions = [
         ...config.enforcement.exceptions,
         ...parseExceptionRules(opts.exception)
       ];
-      const result = applyEnforcementExceptions(
+      const token = opts.token || process.env.PIN_ACTIONS_TOKEN || process.env.GITHUB_TOKEN;
+      const targets = await resolveRepoTargets(opts, config, token);
+      const requestedMultiRepo =
+        Boolean(targets.targetName) ||
+        targets.explicitRepositories.length > 0 ||
+        targets.includePatterns.length > 0 ||
+        targets.excludePatterns.length > 0;
+      const toolVersion = await getToolVersion();
+      const fingerprint = buildRunFingerprint(config, toolVersion);
+      const runDetails: RunExecutionDetails = {
+        command: "enforce",
+        target: targets.repositories.length > 0 || requestedMultiRepo ? "multi-repo" : "local",
+        output: opts.json ? "json" : "text"
+      };
+
+      if (targets.repositories.length > 0) {
+        const rawResult = await scanRepositories(targets.repositoryTargets, {
+          includePatterns: include,
+          excludePatterns: exclude,
+          includeActions,
+          excludeActions,
+          token,
+          githubApiUrl: opts.githubApiUrl || config.githubApiUrl
+        });
+        const result = evaluateMultiRepoEnforcement(rawResult, {
+          allowActions,
+          exceptions
+        });
+        printMultiRepoEnforcement(result, targets, fingerprint, runDetails);
+        if (!result.compliant && config.enforcement.failOnUnpinned) {
+          process.exitCode = 1;
+        }
+        return;
+      }
+
+      if (requestedMultiRepo) {
+        const emptyResult = evaluateEnforcement(
+          {
+            summary: {
+              filesScanned: 0,
+              referencesFound: 0,
+              unpinnedFound: 0
+            },
+            references: [],
+            unpinned: []
+          },
+          {
+            allowActions,
+            exceptions
+          }
+        );
+        printMultiRepoEnforcement(
+          {
+            repositories: [],
+            summary: {
+              repositoriesScanned: 0,
+              repositoriesWithViolations: 0,
+              filesScanned: 0,
+              referencesFound: 0,
+              unpinnedFound: 0,
+              allowedCount: 0,
+              violationCount: 0,
+              invalidExceptionCount: emptyResult.summary.invalidExceptionCount
+            },
+            invalidExceptions: emptyResult.invalidExceptions,
+            compliant: emptyResult.compliant
+          },
+          targets,
+          fingerprint,
+          runDetails
+        );
+        if (!emptyResult.compliant && config.enforcement.failOnUnpinned) {
+          process.exitCode = 1;
+        }
+        return;
+      }
+
+      const result = evaluateEnforcement(
         await scanWorkflows(include, process.cwd(), {
           excludePatterns: exclude,
           includeActions,
           excludeActions
         }),
-        exceptions
+        {
+          allowActions,
+          exceptions
+        }
       );
-      const toolVersion = await getToolVersion();
-      const fingerprint = buildRunFingerprint(config, toolVersion);
-      printRepoTargetSummary(opts, config);
-      printScan(result, config, fingerprint, Boolean(opts.json));
-      if (result.unpinned.length > 0 && config.enforcement.failOnUnpinned) {
+      printEnforcement(result, fingerprint, runDetails);
+      if (!result.compliant && config.enforcement.failOnUnpinned) {
         process.exitCode = 1;
       }
     });
@@ -337,6 +468,16 @@ See docs/ENTERPRISE.md for enterprise deployments.
           continueOnError: Boolean(opts.continueOnError),
           failOnAmbiguous: Boolean(opts.failOnAmbiguous)
         });
+        const toolVersion = await getToolVersion();
+        const fingerprint = buildRunFingerprint(config, toolVersion);
+        const runDetails: RunExecutionDetails = {
+          command: "pr",
+          target: "local",
+          output: "text",
+          continueOnError: Boolean(opts.continueOnError),
+          failOnAmbiguous: Boolean(opts.failOnAmbiguous),
+          prCreate: config.pr.create
+        };
         const branch = await createPullRequestBranch({ config, patches, git });
 
         if (!config.pr.create) {
@@ -344,6 +485,7 @@ See docs/ENTERPRISE.md for enterprise deployments.
             `Created branch ${branch.branch} from ${branch.baseBranch} with ${patches.length} updated workflow file(s).`
           );
           console.log("PR creation is disabled by config.pr.create.");
+          printRunFingerprint(fingerprint, runDetails);
           return;
         }
 
@@ -364,6 +506,7 @@ See docs/ENTERPRISE.md for enterprise deployments.
         console.log(
           `Opened PR #${pullRequest.number}: ${pullRequest.htmlUrl} with ${patches.length} updated workflow file(s).`
         );
+        printRunFingerprint(fingerprint, runDetails);
       } catch (error) {
         if (error instanceof AmbiguousRefError || error instanceof UnresolvedRefError) {
           console.error(safeLog(`Error: ${error.message}`));
@@ -393,7 +536,8 @@ function resolveExcludePatterns(
   cliPaths: string[] | undefined,
   configExclude: string[]
 ): string[] {
-  return resolveWorkflowPatterns(cliPaths ?? configExclude);
+  const values = cliPaths ?? configExclude;
+  return values.length === 0 ? [] : resolveWorkflowPatterns(values);
 }
 
 function resolveStringList(
@@ -404,52 +548,78 @@ function resolveStringList(
 }
 
 interface RepoTargetingResult {
-  org?: string;
+  targetName?: string;
+  targetType?: RepositoryOwnerType;
   explicitRepositories: string[];
   includePatterns: string[];
   excludePatterns: string[];
   repositories: string[];
+  repositoryTargets: Array<{ repository: string; defaultBranch?: string }>;
 }
 
 async function resolveRepoTargets(
   opts: {
     repo?: string[];
     githubOrg?: string;
+    githubUser?: string;
     includeRepo?: string[];
     excludeRepo?: string[];
+    githubApiUrl?: string;
   },
   config: PinActionsConfig,
   token?: string
 ): Promise<RepoTargetingResult> {
-  const org = opts.githubOrg ?? config.org.name;
+  if (opts.githubOrg && opts.githubUser) {
+    throw new Error("Specify either --github-org or --github-user, not both.");
+  }
+
+  const targetName = opts.githubUser ?? opts.githubOrg ?? config.org.name;
+  const targetType: RepositoryOwnerType | undefined = opts.githubUser
+    ? "user"
+    : opts.githubOrg
+      ? "org"
+      : config.org.name
+        ? config.org.type ?? "org"
+        : undefined;
   const explicitRepositories = opts.repo ?? config.repos;
   const includePatterns = opts.includeRepo ?? config.includeRepos;
   const excludePatterns = opts.excludeRepo ?? config.excludeRepos;
-  const candidates = [...explicitRepositories];
+  const candidates: RepositoryMetadata[] = explicitRepositories.map((repository) => ({
+    fullName: repository,
+    defaultBranch: "",
+    archived: false
+  }));
 
-  if (org) {
-    const orgRepositories = await listOrgRepositories(
+  if (targetName && targetType) {
+    const discoveredRepositories = await listOwnerRepositories(
       {
-        org,
+        target: targetName,
+        targetType,
         includePrivate: config.org.includePrivate,
-        includeArchived: config.org.includeArchived
+        includeArchived: config.org.includeArchived,
+        githubApiUrl: opts.githubApiUrl || config.githubApiUrl
       },
       token
     );
-    candidates.push(...orgRepositories);
+    candidates.push(...discoveredRepositories);
   }
 
-  const repositories = filterRepositories(candidates, {
+  const repositories = filterRepositoryMetadata(candidates, {
     includePatterns,
     excludePatterns
   });
 
   return {
-    org,
+    targetName,
+    targetType,
     explicitRepositories,
     includePatterns,
     excludePatterns,
-    repositories
+    repositories: repositories.map((repository) => repository.fullName),
+    repositoryTargets: repositories.map((repository) => ({
+      repository: repository.fullName,
+      defaultBranch: repository.defaultBranch || undefined
+    }))
   };
 }
 
@@ -472,39 +642,6 @@ function parseExceptionRules(values: string[] | undefined): EnforcementException
   });
 }
 
-function applyEnforcementExceptions(
-  result: ScanResult,
-  exceptions: EnforcementException[]
-): ScanResult {
-  if (exceptions.length === 0) {
-    return result;
-  }
-
-  const unpinned = result.unpinned.filter((entry) => {
-    return !exceptions.some((exception) => {
-      if (!matchesPattern(entry.action, exception.action)) {
-        return false;
-      }
-      if (exception.ref && (!entry.ref || !matchesPattern(entry.ref, exception.ref))) {
-        return false;
-      }
-      if (exception.workflow && !matchesPattern(toDisplayPath(entry.filePath), exception.workflow)) {
-        return false;
-      }
-      return true;
-    });
-  });
-
-  return {
-    ...result,
-    summary: {
-      ...result.summary,
-      unpinnedFound: unpinned.length
-    },
-    unpinned
-  };
-}
-
 function applyEnforcementExceptionsToMultiRepo(
   result: MultiRepoScanResult,
   exceptions: EnforcementException[]
@@ -520,6 +657,7 @@ function applyEnforcementExceptionsToMultiRepo(
 
   return {
     repositories,
+    consolidated: applyEnforcementExceptions(result.consolidated, exceptions),
     summary: {
       repositoriesScanned: repositories.length,
       repositoriesWithUnpinned: repositories.filter((entry) => entry.scan.unpinned.length > 0)
@@ -531,59 +669,27 @@ function applyEnforcementExceptionsToMultiRepo(
   };
 }
 
-function printRepoTargetSummary(
-  opts: {
-    repo?: string[];
-    githubOrg?: string;
-    includeRepo?: string[];
-    excludeRepo?: string[];
-  },
-  config: PinActionsConfig
-) {
-  const repos = opts.repo ?? config.repos;
-  const includeRepos = opts.includeRepo ?? config.includeRepos;
-  const excludeRepos = opts.excludeRepo ?? config.excludeRepos;
-  const githubOrg = opts.githubOrg ?? config.org.name;
-
-  if (!githubOrg && repos.length === 0 && includeRepos.length === 0 && excludeRepos.length === 0) {
-    return;
-  }
-
-  console.log("Repo targeting:");
-  if (githubOrg) {
-    console.log(`- org: ${githubOrg}`);
-  }
-  if (repos.length > 0) {
-    console.log(`- explicit repos: ${repos.join(", ")}`);
-  }
-  if (includeRepos.length > 0) {
-    console.log(`- include repo patterns: ${includeRepos.join(", ")}`);
-  }
-  if (excludeRepos.length > 0) {
-    console.log(`- exclude repo patterns: ${excludeRepos.join(", ")}`);
-  }
-  console.log("- execution scope: current repository (multi-repo execution is planned)");
-}
-
 function printMultiRepoScan(
   result: MultiRepoScanResult,
   targets: RepoTargetingResult,
   fingerprint: ReturnType<typeof buildRunFingerprint>,
-  json = false
+  runDetails: RunExecutionDetails
 ) {
-  if (json) {
+  if (runDetails.output === "json") {
     console.log(
       JSON.stringify(
         {
           summary: result.summary,
+          consolidated: result.consolidated,
           repositories: result.repositories,
           targeting: {
-            org: targets.org,
+            targetName: targets.targetName,
+            targetType: targets.targetType,
             explicitRepositories: targets.explicitRepositories,
             includePatterns: targets.includePatterns,
             excludePatterns: targets.excludePatterns
           },
-          run: fingerprint
+          run: toRunOutput(fingerprint, runDetails)
         },
         null,
         2
@@ -595,8 +701,8 @@ function printMultiRepoScan(
   console.log(
     `Scanned ${result.summary.repositoriesScanned} repositories (${result.summary.filesScanned} workflow file(s), ${result.summary.unpinnedFound} unpinned reference(s)).`
   );
-  if (targets.org) {
-    console.log(`Target org: ${targets.org}`);
+  if (targets.targetName && targets.targetType) {
+    console.log(`Target ${targets.targetType}: ${targets.targetName}`);
   }
   if (targets.explicitRepositories.length > 0) {
     console.log(`Explicit repos: ${targets.explicitRepositories.join(", ")}`);
@@ -607,6 +713,12 @@ function printMultiRepoScan(
   if (targets.excludePatterns.length > 0) {
     console.log(`Exclude repo patterns: ${targets.excludePatterns.join(", ")}`);
   }
+  if (result.consolidated.unpinned.length > 0) {
+    console.log("Consolidated findings:");
+    for (const ref of result.consolidated.unpinned) {
+      console.log(`- ${ref.filePath}:${ref.line} -> ${ref.raw}`);
+    }
+  }
   for (const entry of result.repositories) {
     console.log(
       `- ${entry.repository} [${entry.defaultBranch}] -> ${entry.scan.summary.unpinnedFound} unpinned of ${entry.scan.summary.referencesFound} reference(s)`
@@ -616,23 +728,91 @@ function printMultiRepoScan(
     }
   }
 
-  printRunFingerprint(fingerprint);
+  printRunFingerprint(fingerprint, runDetails);
+}
+
+function printMultiRepoEnforcement(
+  result: MultiRepoEnforcementResult,
+  targets: RepoTargetingResult,
+  fingerprint: ReturnType<typeof buildRunFingerprint>,
+  runDetails: RunExecutionDetails
+) {
+  if (runDetails.output === "json") {
+    console.log(
+      JSON.stringify(
+        {
+          compliant: result.compliant,
+          summary: result.summary,
+          invalidExceptions: result.invalidExceptions,
+          repositories: result.repositories,
+          targeting: {
+            targetName: targets.targetName,
+            targetType: targets.targetType,
+            explicitRepositories: targets.explicitRepositories,
+            includePatterns: targets.includePatterns,
+            excludePatterns: targets.excludePatterns
+          },
+          run: toRunOutput(fingerprint, runDetails)
+        },
+        null,
+        2
+      )
+    );
+    return;
+  }
+
+  console.log(
+    result.compliant
+      ? `Enforcement passed across ${result.summary.repositoriesScanned} repositories.`
+      : `Enforcement failed across ${result.summary.repositoriesScanned} repositories.`
+  );
+  console.log(
+    `Allowed ${result.summary.allowedCount} reference(s); found ${result.summary.violationCount} violation(s); ${result.summary.invalidExceptionCount} invalid or expired exception(s).`
+  );
+  if (targets.targetName && targets.targetType) {
+    console.log(`Target ${targets.targetType}: ${targets.targetName}`);
+  }
+  if (targets.explicitRepositories.length > 0) {
+    console.log(`Explicit repos: ${targets.explicitRepositories.join(", ")}`);
+  }
+  if (targets.includePatterns.length > 0) {
+    console.log(`Include repo patterns: ${targets.includePatterns.join(", ")}`);
+  }
+  if (targets.excludePatterns.length > 0) {
+    console.log(`Exclude repo patterns: ${targets.excludePatterns.join(", ")}`);
+  }
+
+  if (result.invalidExceptions.length > 0) {
+    console.log("\nInvalid or expired exceptions:");
+    for (const issue of result.invalidExceptions) {
+      console.log(`- ${issue.message}`);
+    }
+  }
+
+  for (const entry of result.repositories) {
+    console.log(
+      `\n- ${entry.repository} [${entry.defaultBranch}] -> ${entry.enforcement.summary.allowedCount} allowed, ${entry.enforcement.summary.violationCount} violation(s)`
+    );
+    printEnforcementSections(entry.enforcement, "  ", { includeInvalidExceptions: false });
+  }
+
+  printRunFingerprint(fingerprint, runDetails);
 }
 
 function printScan(
   result: ScanResult,
   config: PinActionsConfig,
   fingerprint: ReturnType<typeof buildRunFingerprint>,
-  json = false
+  runDetails: RunExecutionDetails
 ) {
-  if (json) {
-    console.log(JSON.stringify(toScanOutput(result, fingerprint), null, 2));
+  if (runDetails.output === "json") {
+    console.log(JSON.stringify(toScanOutput(result, fingerprint, runDetails), null, 2));
     return;
   }
 
   if (result.unpinned.length === 0) {
     console.log("No unpinned actions found.");
-    printRunFingerprint(fingerprint);
+    printRunFingerprint(fingerprint, runDetails);
     return;
   }
 
@@ -642,23 +822,106 @@ function printScan(
       `- ${toDisplayPath(entry.filePath)}:${entry.line} -> ${entry.raw}`
     );
   }
-  if (config.mode === "scan") {
+  if (runDetails.command === "scan") {
     console.log("Run `pin-actions fix` to pin these references.");
   }
 
-  printRunFingerprint(fingerprint);
+  printRunFingerprint(fingerprint, runDetails);
+}
+
+function printEnforcement(
+  result: EnforcementResult,
+  fingerprint: ReturnType<typeof buildRunFingerprint>,
+  runDetails: RunExecutionDetails
+) {
+  if (runDetails.output === "json") {
+    console.log(JSON.stringify(toEnforcementOutput(result, fingerprint, runDetails), null, 2));
+    return;
+  }
+
+  console.log(
+    result.compliant
+      ? "Enforcement passed."
+      : "Enforcement failed."
+  );
+  console.log(
+    `Allowed ${result.summary.allowedCount} reference(s); found ${result.summary.violationCount} violation(s); ${result.summary.invalidExceptionCount} invalid or expired exception(s).`
+  );
+
+  if (
+    result.summary.allowedCount === 0 &&
+    result.summary.violationCount === 0 &&
+    result.summary.invalidExceptionCount === 0
+  ) {
+    console.log("No unpinned action references found.");
+    printRunFingerprint(fingerprint, runDetails);
+    return;
+  }
+
+  printEnforcementSections(result);
+  printRunFingerprint(fingerprint, runDetails);
 }
 
 function toScanOutput(
   result: ScanResult,
-  fingerprint: ReturnType<typeof buildRunFingerprint>
+  fingerprint: ReturnType<typeof buildRunFingerprint>,
+  runDetails: RunExecutionDetails
 ) {
   return {
     summary: result.summary,
     references: result.references,
     unpinned: result.unpinned,
-    run: fingerprint
+    run: toRunOutput(fingerprint, runDetails)
   };
+}
+
+function toEnforcementOutput(
+  result: EnforcementResult,
+  fingerprint: ReturnType<typeof buildRunFingerprint>,
+  runDetails: RunExecutionDetails
+) {
+  return {
+    compliant: result.compliant,
+    summary: result.summary,
+    references: result.references,
+    allowed: result.allowed,
+    violations: result.violations,
+    invalidExceptions: result.invalidExceptions,
+    run: toRunOutput(fingerprint, runDetails)
+  };
+}
+
+function printEnforcementSections(
+  result: EnforcementResult,
+  indent = "",
+  options: {
+    includeInvalidExceptions?: boolean;
+  } = {}
+) {
+  if (result.allowed.length > 0) {
+    console.log(`${indent}Allowed references:`);
+    for (const entry of result.allowed) {
+      console.log(`${indent}- ${formatEnforcementFinding(entry)}`);
+    }
+  }
+
+  if (options.includeInvalidExceptions !== false && result.invalidExceptions.length > 0) {
+    console.log(`${indent}Invalid or expired exceptions:`);
+    for (const issue of result.invalidExceptions) {
+      console.log(`${indent}- ${issue.message}`);
+    }
+  }
+
+  if (result.violations.length > 0) {
+    console.log(`${indent}Violations:`);
+    for (const entry of result.violations) {
+      console.log(`${indent}- ${formatEnforcementFinding(entry)}`);
+    }
+  }
+}
+
+function formatEnforcementFinding(entry: EnforcementResult["allowed"][number]): string {
+  return `${toDisplayPath(entry.filePath)}:${entry.line} -> ${entry.raw} (${entry.message})`;
 }
 
 function countUpdatedReferences(patches: FilePatch[]): number {
@@ -667,11 +930,12 @@ function countUpdatedReferences(patches: FilePatch[]): number {
 
 function printDryRunPreview(
   patches: FilePatch[],
-  fingerprint: ReturnType<typeof buildRunFingerprint>
+  fingerprint: ReturnType<typeof buildRunFingerprint>,
+  runDetails: RunExecutionDetails
 ) {
   if (patches.length === 0) {
     console.log("No changes would be made.");
-    printRunFingerprint(fingerprint);
+    printRunFingerprint(fingerprint, runDetails);
     return;
   }
 
@@ -692,15 +956,56 @@ function printDryRunPreview(
   }
 
   printEvidenceReport(patches);
-  printRunFingerprint(fingerprint);
+  printRunFingerprint(fingerprint, runDetails);
 }
 
-function printRunFingerprint(fingerprint: ReturnType<typeof buildRunFingerprint>) {
-  console.log("\nRun fingerprint:");
-  console.log(formatFingerprint(fingerprint));
+function printRunFingerprint(
+  fingerprint: ReturnType<typeof buildRunFingerprint>,
+  runDetails: RunExecutionDetails
+) {
+  const lines: Array<[string, string]> = [
+    ["Tool version", formatToolVersionForDisplay(fingerprint.toolVersion)],
+    ["Config hash", fingerprint.configHash],
+    ["Fingerprint", fingerprint.fingerprint],
+    ["Command", runDetails.command],
+    ["Target", runDetails.target],
+    ["Output", runDetails.output]
+  ];
+
+  if (runDetails.dryRun !== undefined) {
+    lines.push(["Dry run", String(runDetails.dryRun)]);
+  }
+  if (runDetails.continueOnError !== undefined) {
+    lines.push(["Continue on error", String(runDetails.continueOnError)]);
+  }
+  if (runDetails.failOnAmbiguous !== undefined) {
+    lines.push(["Fail on ambiguous", String(runDetails.failOnAmbiguous)]);
+  }
+  if (runDetails.prCreate !== undefined) {
+    lines.push(["Create PR", String(runDetails.prCreate)]);
+  }
+
+  console.log("\n📋 Run fingerprint:");
+  for (const [label, value] of lines) {
+    console.log(`  ${(label + ":").padEnd(19)} ${value}`);
+  }
 }
 
 function printEvidenceReport(patches: FilePatch[]) {
   console.log("\nEvidence:");
   console.log(formatEvidence(patches));
+}
+
+function toRunOutput(
+  fingerprint: ReturnType<typeof buildRunFingerprint>,
+  runDetails: RunExecutionDetails
+) {
+  return {
+    ...fingerprint,
+    execution: runDetails
+  };
+}
+
+function formatToolVersionForDisplay(toolVersion: string): string {
+  return toolVersion.startsWith("pin-actions@") ? toolVersion : `pin-actions@${toolVersion}`;
 }

@@ -1,48 +1,56 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { Octokit } from "@octokit/rest";
 import type { CommitLookupClient } from "../src/resolver.js";
-import { ActionResolver } from "../src/resolver.js";
+import { ActionResolver, normalizeGithubApiUrl } from "../src/resolver.js";
 
 describe("GHES (GitHub Enterprise Server) Authentication", () => {
-  describe("API endpoint translation", () => {
+  describe("API endpoint translation via normalizeGithubApiUrl", () => {
     it("translates github.com to https://api.github.com", () => {
-      const url = "github.com";
-      const expected = "https://api.github.com";
-      expect(url === "github.com" ? expected : url).toBe("https://api.github.com");
+      expect(normalizeGithubApiUrl("github.com")).toBe("https://api.github.com");
+    });
+
+    it("translates https://github.com to https://api.github.com", () => {
+      expect(normalizeGithubApiUrl("https://github.com")).toBe("https://api.github.com");
     });
 
     it("translates enterprise domain to enterprise domain/api/v3", () => {
-      const url = "enterprise.example.com";
-      const expected = "https://enterprise.example.com/api/v3";
-      expect(url.includes(".") && !url.includes("github.com") ? expected : url).toBe(
+      expect(normalizeGithubApiUrl("enterprise.example.com")).toBe(
         "https://enterprise.example.com/api/v3"
       );
     });
 
     it("handles trailing slashes correctly", () => {
-      const url1 = "enterprise.example.com/";
-      const url2 = "https://enterprise.example.com/";
-      // Both should normalize to https://enterprise.example.com/api/v3
-      const normalized1 = url1.replace(/\/$/, "").startsWith("https://")
-        ? url1.replace(/\/$/, "")
-        : `https://${url1.replace(/\/$/, "")}`;
-      const normalized2 = url2.replace(/\/$/, "");
-      expect(normalized1).not.toMatch(/\/$/);
-      expect(normalized2).not.toMatch(/\/$/);
+      expect(normalizeGithubApiUrl("enterprise.example.com/")).toBe(
+        "https://enterprise.example.com/api/v3"
+      );
+      expect(normalizeGithubApiUrl("https://enterprise.example.com/")).toBe(
+        "https://enterprise.example.com/api/v3"
+      );
     });
 
-    it("rejects non-https URLs", () => {
-      const url = "http://enterprise.example.com";
-      expect(() => {
-        if (!url.startsWith("https://")) {
-          throw new Error("API URL must use HTTPS");
-        }
-      }).toThrow("API URL must use HTTPS");
+    it("does not double-append /api/v3 when already present", () => {
+      const result = normalizeGithubApiUrl("https://enterprise.example.com/api/v3");
+      expect(result).toBe("https://enterprise.example.com/api/v3");
+      expect(result.split("/api/v3").length - 1).toBe(1);
+    });
+
+    it("ensures https:// prefix on bare enterprise domains", () => {
+      const result = normalizeGithubApiUrl("enterprise.example.com");
+      expect(result).toMatch(/^https:\/\//);
     });
 
     it("handles api.github.com correctly (already absolute)", () => {
-      const url = "https://api.github.com";
-      expect(url).toBe("https://api.github.com");
+      expect(normalizeGithubApiUrl("https://api.github.com")).toBe("https://api.github.com");
+    });
+
+    it("returns https://api.github.com when no URL provided", () => {
+      expect(normalizeGithubApiUrl()).toBe("https://api.github.com");
+      expect(normalizeGithubApiUrl(undefined)).toBe("https://api.github.com");
+    });
+
+    it("handles GHES with subdomains", () => {
+      const result = normalizeGithubApiUrl("enterprise.corp.example.com");
+      expect(result).toMatch(/^https:\/\//);
+      expect(result).toContain("/api/v3");
     });
   });
 
@@ -52,7 +60,6 @@ describe("GHES (GitHub Enterprise Server) Authentication", () => {
       const envVar = "https://enterprise-env.example.com/api/v3";
       const configFile = "https://enterprise-config.example.com/api/v3";
 
-      // Simulate precedence: CLI > ENV > CONFIG
       const selected = cliFlag || envVar || configFile;
       expect(selected).toBe(cliFlag);
     });
@@ -75,13 +82,7 @@ describe("GHES (GitHub Enterprise Server) Authentication", () => {
     });
 
     it("respects github.com default when nothing specified", () => {
-      const cliFlag = undefined;
-      const envVar = undefined;
-      const configFile = undefined;
-      const defaultUrl = "https://api.github.com";
-
-      const selected = cliFlag || envVar || configFile || defaultUrl;
-      expect(selected).toBe(defaultUrl);
+      expect(normalizeGithubApiUrl(undefined)).toBe("https://api.github.com");
     });
   });
 
@@ -121,45 +122,12 @@ describe("GHES (GitHub Enterprise Server) Authentication", () => {
 
     it("token auth works with GHES", () => {
       const token = "ghes_token_xyz";
-      // Verify token is passed to resolver
       const resolver = new ActionResolver(token);
       expect(resolver).toBeDefined();
-    });
-
-    it("handles GHES with subdomains", async () => {
-      const baseUrl = "https://enterprise.corp.example.com/api/v3";
-      expect(baseUrl).toMatch(/^https:\/\//);
-      expect(baseUrl).toContain("/api/v3");
-    });
-
-    it("uses Octokit with custom baseUrl", () => {
-      const baseUrl = "https://enterprise.example.com/api/v3";
-      // In real implementation, Octokit would be initialized with baseUrl
-      expect(baseUrl).toMatch(/^https:\/\//);
     });
   });
 
   describe("Error handling", () => {
-    it("rejects invalid URL format (must be https://)", () => {
-      const url = "http://enterprise.example.com";
-      expect(() => {
-        if (!url.startsWith("https://")) {
-          throw new Error("API URL must use HTTPS");
-        }
-      }).toThrow("API URL must use HTTPS");
-    });
-
-    it("rejects malformed URLs", () => {
-      const url = "not a valid url at all";
-      expect(() => {
-        try {
-          new URL(url);
-        } catch {
-          throw new Error("Invalid API URL format");
-        }
-      }).toThrow();
-    });
-
     it("throws on connection error to GHES endpoint", async () => {
       const mockClient: CommitLookupClient = {
         repos: {
@@ -201,7 +169,7 @@ describe("GHES (GitHub Enterprise Server) Authentication", () => {
           ref: "v4",
           kind: "tag-or-branch"
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow("Invalid or expired token");
     });
 
     it("throws on 403 rate limit at GHES endpoint", async () => {
@@ -252,28 +220,20 @@ describe("GHES (GitHub Enterprise Server) Authentication", () => {
   });
 
   describe("GHES config file integration", () => {
-    it("reads GHES URL from .pin-actions.json", () => {
-      const config = {
-        github: {
-          apiUrl: "https://enterprise.example.com/api/v3"
-        }
-      };
-
-      expect(config.github?.apiUrl).toBe("https://enterprise.example.com/api/v3");
+    it("normalizes GHES URL from config correctly", () => {
+      const configUrl = "https://enterprise.example.com/api/v3";
+      expect(normalizeGithubApiUrl(configUrl)).toBe(configUrl);
     });
 
-    it("validates GHES URL in config must be https://", () => {
-      const config = {
-        github: {
-          apiUrl: "http://enterprise.example.com/api/v3"
-        }
-      };
+    it("normalizes bare GHES hostname from config", () => {
+      const configUrl = "enterprise.example.com";
+      expect(normalizeGithubApiUrl(configUrl)).toBe("https://enterprise.example.com/api/v3");
+    });
 
-      expect(() => {
-        if (config.github?.apiUrl && !config.github.apiUrl.startsWith("https://")) {
-          throw new Error("GHES API URL must use HTTPS");
-        }
-      }).toThrow("GHES API URL must use HTTPS");
+    it("validates that non-https GHES URL is coerced to https", () => {
+      // normalizeGithubApiUrl always produces https:// output
+      const result = normalizeGithubApiUrl("http://enterprise.example.com");
+      expect(result).toMatch(/^https:\/\//);
     });
   });
 });

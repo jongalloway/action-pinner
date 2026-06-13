@@ -63,17 +63,36 @@ pin-actions scan --repo acme-corp/service-a acme-corp/service-b --token $ORG_TOK
 
 ```yaml
 - name: Enforce pinned actions
-  run: >
-    pin-actions enforce
-    --allow-action "actions/*"
-    --exception "actions/upload-artifact@v3::**/legacy.yml"
+  run: pin-actions enforce
 ```
 
 Prefer config-driven policy in `.pin-actions.json` for auditability:
 
-- `enforcement.allowActions`: explicit enforcement scope
-- `enforcement.exceptions`: explicit exception objects (`action`, optional `ref`, `workflow`, `reason`)
+- `enforcement.allowActions`: explicit allowlist entries (`owner/repo` or `owner/*`) that always pass
+- `enforcement.exceptions`: explicit exception objects (`action`, optional `ref`, `workflow`, `justification`, `expiresAt`)
 - `enforcement.failOnUnpinned`: leave `true` for safe default fail-closed behavior
+
+Example:
+
+```json
+{
+  "enforcement": {
+    "failOnUnpinned": true,
+    "allowActions": ["actions/*", "github/*"],
+    "exceptions": [
+      {
+        "action": "actions/upload-artifact",
+        "ref": "v3",
+        "workflow": "**/legacy.yml",
+        "justification": "Pending migration off legacy artifact flow",
+        "expiresAt": "2026-12-31"
+      }
+    ]
+  }
+}
+```
+
+Expired or malformed exceptions fail closed and are surfaced as non-compliant enforcement output.
 
 ## Troubleshooting
 

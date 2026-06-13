@@ -53,6 +53,7 @@
       "additionalProperties": false,
       "properties": {
         "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["org", "user"] },
         "includePrivate": { "type": "boolean" },
         "includeArchived": { "type": "boolean" }
       }
@@ -99,7 +100,9 @@
               "action": { "type": "string" },
               "ref": { "type": "string" },
               "workflow": { "type": "string" },
-              "reason": { "type": "string" }
+              "reason": { "type": "string" },
+              "justification": { "type": "string" },
+              "expiresAt": { "type": "string" }
             }
           }
         }

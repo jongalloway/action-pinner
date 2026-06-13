@@ -22,6 +22,43 @@ export interface EnforcementException {
   ref?: string;
   workflow?: string;
   reason?: string;
+  justification?: string;
+  expiresAt?: string;
+}
+
+export type EnforcementFindingReason =
+  | "allowlist"
+  | "exception"
+  | "expired-exception"
+  | "invalid-exception"
+  | "unpinned";
+
+export interface EnforcementFinding extends ActionReference {
+  outcome: "allowed" | "violation";
+  reason: EnforcementFindingReason;
+  message: string;
+  matchedPattern?: string;
+  exception?: EnforcementException;
+}
+
+export interface EnforcementExceptionIssue {
+  index: number;
+  reason: "invalid-action" | "invalid-ref" | "invalid-workflow" | "invalid-expiry" | "expired";
+  message: string;
+  exception: EnforcementException;
+}
+
+export interface EnforcementResult {
+  summary: ScanSummary & {
+    allowedCount: number;
+    violationCount: number;
+    invalidExceptionCount: number;
+  };
+  references: ActionReference[];
+  allowed: EnforcementFinding[];
+  violations: EnforcementFinding[];
+  invalidExceptions: EnforcementExceptionIssue[];
+  compliant: boolean;
 }
 
 export interface DependabotConfig {
@@ -31,6 +68,7 @@ export interface DependabotConfig {
 
 export interface OrgConfig {
   name?: string;
+  type?: "org" | "user";
   includePrivate: boolean;
   includeArchived: boolean;
 }
@@ -107,6 +145,29 @@ export interface ScanSummary {
   unpinnedFound: number;
 }
 
+export interface MultiRepoEnforcementEntry {
+  repository: string;
+  defaultBranch: string;
+  scan: ScanResult;
+  enforcement: EnforcementResult;
+}
+
+export interface MultiRepoEnforcementResult {
+  repositories: MultiRepoEnforcementEntry[];
+  summary: {
+    repositoriesScanned: number;
+    repositoriesWithViolations: number;
+    filesScanned: number;
+    referencesFound: number;
+    unpinnedFound: number;
+    allowedCount: number;
+    violationCount: number;
+    invalidExceptionCount: number;
+  };
+  invalidExceptions: EnforcementExceptionIssue[];
+  compliant: boolean;
+}
+
 export interface ResolutionErrorDetails {
   ref: string;
   reason: string;
@@ -151,7 +212,8 @@ export class UnresolvedRefError extends Error {
       reason: "Could not resolve ref after retries",
       suggestions: [
         "Verify the ref exists in the repository",
-        "Check that the token has read access to the repository",
+        "For private repositories, use a least-privilege token with Contents: Read (or classic repo scope only if fine-grained tokens are not available)",
+        "Add Pull requests: Write only when you are using PR creation features",
         "Use --continue-on-error to skip this reference"
       ],
       retryDetails: {

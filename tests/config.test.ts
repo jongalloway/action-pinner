@@ -25,6 +25,12 @@ describe("loadConfig", () => {
           exclude: [".github/workflows/legacy/**"],
           repos: ["octo-org/service-a"],
           includeRepos: ["platform-*"],
+          org: {
+            name: "octocat",
+            type: "user",
+            includePrivate: true,
+            includeArchived: false
+          },
           excludeActions: ["actions/cache"],
           pr: {
             create: false,
@@ -43,7 +49,9 @@ describe("loadConfig", () => {
                 action: "actions/upload-artifact",
                 ref: "v3",
                 workflow: "**/legacy.yml",
-                reason: "temporary exception"
+                reason: "temporary exception",
+                justification: "Legacy runner migration",
+                expiresAt: "2099-12-31"
               }
             ]
           }
@@ -60,6 +68,8 @@ describe("loadConfig", () => {
     expect(config.exclude).toEqual([".github/workflows/legacy/**"]);
     expect(config.repos).toEqual(["octo-org/service-a"]);
     expect(config.includeRepos).toEqual(["platform-*"]);
+    expect(config.org.name).toBe("octocat");
+    expect(config.org.type).toBe("user");
     expect(config.excludeActions).toEqual(["actions/cache"]);
     expect(config.pr.create).toBe(false);
     expect(config.pr.labels).toEqual(["security"]);
@@ -67,6 +77,8 @@ describe("loadConfig", () => {
     expect(config.pr.assignees).toEqual(["hubot"]);
     expect(config.enforcement.allowActions).toEqual(["actions/*"]);
     expect(config.enforcement.exceptions).toHaveLength(1);
+    expect(config.enforcement.exceptions[0].justification).toBe("Legacy runner migration");
+    expect(config.enforcement.exceptions[0].expiresAt).toBe("2099-12-31");
   });
 
   it("fails on invalid top-level keys", async () => {
@@ -152,6 +164,18 @@ describe("loadConfig", () => {
 
     await expect(loadConfig(configPath)).rejects.toThrow(
       "unknown property 'enforcement.allowlist'"
+    );
+  });
+
+  it("fails on invalid org type", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    tempDirs.push(root);
+
+    const configPath = join(root, ".pin-actions.json");
+    await writeFile(configPath, JSON.stringify({ org: { type: "team" } }), "utf8");
+
+    await expect(loadConfig(configPath)).rejects.toThrow(
+      "'org.type' must be either 'org' or 'user'"
     );
   });
 });

@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 import { Octokit } from "@octokit/rest";
 import { matchesAnyPattern } from "./pattern-match.js";
+import { normalizeGithubApiUrl } from "./resolver.js";
 import { buildScanResult, extractActionReferences } from "./scanner.js";
 import { resolveWorkflowPatterns } from "./workflow-paths.js";
 import type { ActionReference, ScanResult } from "./types.js";
@@ -20,8 +21,14 @@ export interface MultiRepoScanEntry {
   scan: ScanResult;
 }
 
+export interface RepositoryScanTarget {
+  repository: string;
+  defaultBranch?: string;
+}
+
 export interface MultiRepoScanResult {
   repositories: MultiRepoScanEntry[];
+  consolidated: ScanResult;
   summary: {
     repositoriesScanned: number;
     repositoriesWithUnpinned: number;
@@ -55,13 +62,11 @@ interface RepoClient {
 }
 
 export async function scanRepositories(
-  repositories: string[],
+  repositories: Array<string | RepositoryScanTarget>,
   options: MultiRepoScanOptions,
   client: RepoClient = createRepoClient(options)
 ): Promise<MultiRepoScanResult> {
-  const sortedRepositories = [...repositories].sort((left, right) =>
-    left.localeCompare(right)
-  );
+  const sortedRepositories = normalizeScanTargets(repositories);
   const entries: MultiRepoScanEntry[] = [];
 
   for (const repository of sortedRepositories) {
@@ -69,26 +74,33 @@ export async function scanRepositories(
     entries.push(scan);
   }
 
+  const consolidated = buildScanResult(
+    entries.flatMap((entry) => entry.scan.references),
+    entries.reduce((sum, entry) => sum + entry.scan.summary.filesScanned, 0)
+  );
+
   return {
     repositories: entries,
+    consolidated,
     summary: {
       repositoriesScanned: entries.length,
       repositoriesWithUnpinned: entries.filter((entry) => entry.scan.unpinned.length > 0).length,
-      filesScanned: entries.reduce((sum, entry) => sum + entry.scan.summary.filesScanned, 0),
-      referencesFound: entries.reduce((sum, entry) => sum + entry.scan.summary.referencesFound, 0),
-      unpinnedFound: entries.reduce((sum, entry) => sum + entry.scan.summary.unpinnedFound, 0)
+      filesScanned: consolidated.summary.filesScanned,
+      referencesFound: consolidated.summary.referencesFound,
+      unpinnedFound: consolidated.summary.unpinnedFound
     }
   };
 }
 
 async function scanSingleRepository(
-  repository: string,
+  target: RepositoryScanTarget,
   options: MultiRepoScanOptions,
   client: RepoClient
 ): Promise<MultiRepoScanEntry> {
+  const repository = target.repository;
   const { owner, repo } = splitRepository(repository);
-  const repoDetails = await client.repos.get({ owner, repo });
-  const defaultBranch = repoDetails.data.default_branch;
+  const defaultBranch =
+    target.defaultBranch ?? (await client.repos.get({ owner, repo })).data.default_branch;
 
   const tree = await client.git.getTree({
     owner,
@@ -162,8 +174,29 @@ function decodeContent(content: string, encoding: string): string {
 function createRepoClient(options: MultiRepoScanOptions): RepoClient {
   return new Octokit({
     auth: options.token,
-    baseUrl: options.githubApiUrl
+    baseUrl: normalizeGithubApiUrl(options.githubApiUrl)
   }) as unknown as RepoClient;
+}
+
+function normalizeScanTargets(
+  repositories: Array<string | RepositoryScanTarget>
+): RepositoryScanTarget[] {
+  const deduped = new Map<string, RepositoryScanTarget>();
+  for (const repository of repositories) {
+    const target =
+      typeof repository === "string" ? { repository } : repository;
+    const normalized = splitRepository(target.repository);
+    const fullName = `${normalized.owner}/${normalized.repo}`;
+    const existing = deduped.get(fullName.toLowerCase());
+    deduped.set(fullName.toLowerCase(), {
+      repository: fullName,
+      defaultBranch: existing?.defaultBranch ?? target.defaultBranch
+    });
+  }
+
+  return [...deduped.values()].sort((left, right) =>
+    left.repository.localeCompare(right.repository, "en", { sensitivity: "base" })
+  );
 }
 
 function splitRepository(repository: string): { owner: string; repo: string } {

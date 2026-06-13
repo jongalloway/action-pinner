@@ -105,7 +105,11 @@ export function extractActionReferences(
     references.push({
       filePath,
       line: index + 1,
+<<<<<<< HEAD
       column: line.indexOf("uses:") + 1,
+=======
+      column: match[0].indexOf("uses:") + 1,
+>>>>>>> origin/main
       raw,
       action: parsed.action,
       ref: parsed.ref,

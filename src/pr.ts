@@ -101,7 +101,10 @@ export async function publishPullRequest({
   }
 
   if (!token) {
-    throw new Error("GITHUB_TOKEN is required to create pull requests.");
+    throw new Error(
+      "A GitHub token is required to create pull requests. " +
+      "Set PIN_ACTIONS_TOKEN or use --token, or ensure GITHUB_TOKEN is available."
+    );
   }
 
   const repo = repository ?? (await resolveRepositoryInfo(git));

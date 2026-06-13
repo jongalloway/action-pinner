@@ -53,6 +53,7 @@
       "additionalProperties": false,
       "properties": {
         "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["org", "user"] },
         "includePrivate": { "type": "boolean" },
         "includeArchived": { "type": "boolean" }
       }
@@ -114,6 +115,14 @@
         "addVersionComments": { "type": "boolean" },
         "generateConfigSnippet": { "type": "boolean" }
       }
+    },
+    "githubApiUrl": {
+      "type": "string",
+      "description": "Custom GitHub API base URL for GitHub Enterprise Server (GHES). Defaults to https://api.github.com."
+    },
+    "useNetrc": {
+      "type": "boolean",
+      "description": "Use credentials from ~/.netrc for authentication instead of a token."
     }
   }
 }

@@ -9,7 +9,7 @@ Modern replacement for `pin-github-action` that scans workflows for unpinned Git
 - Auto-pinning engine with optional `# vX.Y.Z` comments
 - PR preparation flow (branch + commit + open PR metadata)
 - Evidence sections for resolved SHAs and reproducible run fingerprints
-- Multi-repo/org scanning with deterministic per-repo reporting
+- Multi-repo/org/user scanning with deterministic per-repo and consolidated reporting
 - CI enforcement mode
 - Config support via `.pin-actions.json`
 - Config validation with clear errors for invalid JSON or unknown fields
@@ -83,6 +83,7 @@ For more details, see [SECURITY.md](./SECURITY.md).
 pin-actions scan
 pin-actions scan --json
 pin-actions scan --github-org octo-org --include-repo "platform-*" --exclude-repo "*-archive"
+pin-actions scan --github-user octocat --include-repo "demo-*"
 pin-actions scan --exclude-path ".github/workflows/legacy/**" --exclude-action "actions/cache"
 pin-actions fix --dry-run
 pin-actions fix
@@ -100,6 +101,7 @@ pin-actions dependabot-snippet
 - `--exclude-action <pattern...>`: exclude matching actions
 - `--repo <owner/repo...>`: explicit multi-repo targets
 - `--github-org <org>`: org-level target selection
+- `--github-user <user>`: user-level target selection
 - `--include-repo <pattern...>` / `--exclude-repo <pattern...>`: repo allow/exclude patterns for multi-repo targeting
 
 ## Configuration
@@ -117,16 +119,23 @@ Schema: `schemas/pin-actions.schema.json`
   "includeRepos": ["platform-*"],
   "excludeRepos": ["*-archive"],
   "excludeActions": ["actions/cache"],
+  "org": {
+    "name": "octocat",
+    "type": "user",
+    "includePrivate": true,
+    "includeArchived": false
+  },
   "enforcement": {
     "enabled": true,
     "failOnUnpinned": true,
-    "allowActions": ["actions/*", "github/codeql-action"],
+    "allowActions": ["actions/*", "github/*"],
     "exceptions": [
       {
         "action": "actions/upload-artifact",
         "ref": "v3",
         "workflow": "**/legacy.yml",
-        "reason": "Temporary migration exception; tracked in SEC-1234"
+        "justification": "Temporary migration exception; tracked in SEC-1234",
+        "expiresAt": "2026-12-31"
       }
     ]
   }
@@ -136,9 +145,10 @@ Schema: `schemas/pin-actions.schema.json`
 ### CI enforcement allowlists and exceptions
 
 - **Safe default:** `enforcement.failOnUnpinned` defaults to `true`, so violations fail CI.
-- `enforcement.allowActions` narrows enforcement scope to explicitly listed action patterns.
-- `enforcement.exceptions` supports explicit, reviewable carve-outs (`action`, optional `ref`, optional `workflow`, optional `reason`).
-- Use `reason` for auditability and periodic exception cleanup.
+- `enforcement.allowActions` is an allowlist of action patterns (`owner/repo` or `owner/*`) that always pass enforcement.
+- `enforcement.exceptions` supports explicit, reviewable carve-outs with `action`, optional `ref`, optional `workflow`, optional `justification`, and optional `expiresAt`.
+- `reason` remains supported as a backward-compatible alias for `justification`.
+- Expired or malformed exceptions fail closed and are called out explicitly in `pin-actions enforce` output.
 - CLI overrides:
   - `pin-actions enforce --allow-action "<pattern>"`
   - `pin-actions enforce --exception "<action>[@ref][::workflow-glob]"`
@@ -263,11 +273,45 @@ The `pr` block supports:
 
 ## GitHub Action usage
 
-This repository includes a composite action descriptor at `.github/action.yml` that runs the built Node.js entrypoint with:
+This repository includes a Node action descriptor at `.github/action.yml`.
 
 - `mode` (scan|fix|enforce|pr)
 - `config` (path to `.pin-actions.json`)
 - `path` (workflow file or directory to scan)
+- `exclude_path`, `include_action`, `exclude_action`
+- `allow_actions`, `exception_rules` for enforcement mode
+
+### Example: enforce in CI
+
+```yaml
+jobs:
+  pin-actions-enforce:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jongalloway/pin-actions/.github/action.yml@main
+        id: pin-actions
+        with:
+          mode: enforce
+          config: .pin-actions.json
+      - name: Show enforcement summary
+        run: |
+          echo "Compliant: ${{ steps.pin-actions.outputs.compliant }}"
+          echo "Allowed: ${{ steps.pin-actions.outputs.allowed_count }}"
+          echo "Violations: ${{ steps.pin-actions.outputs.violation_count }}"
+          echo "Invalid exceptions: ${{ steps.pin-actions.outputs.invalid_exception_count }}"
+```
+
+Action outputs in `enforce` mode:
+
+- `compliant`
+- `allowed_count`
+- `violation_count`
+- `invalid_exception_count`
+- `fingerprint`
+- `config_hash`
 
 ## Upstream coverage we should keep visible
 

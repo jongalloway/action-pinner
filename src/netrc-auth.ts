@@ -42,24 +42,33 @@ export async function loadNetrc(): Promise<Map<string, NetrcCredentials>> {
       }
 
       const parts = trimmed.split(/\s+/);
-      for (let i = 0; i < parts.length; i += 2) {
+      let i = 0;
+      while (i < parts.length) {
         const key = parts[i];
-        const value = parts[i + 1];
+        i += 1;
 
-        if (key === "machine" && value) {
-          if (currentMachine && currentLogin && currentPassword) {
-            credentials.set(currentMachine, {
-              login: currentLogin,
-              password: currentPassword
-            });
+        if (key === "machine") {
+          const value = parts[i];
+          if (value) {
+            if (currentMachine && currentLogin && currentPassword) {
+              credentials.set(currentMachine, {
+                login: currentLogin,
+                password: currentPassword
+              });
+            }
+            currentMachine = value;
+            currentLogin = null;
+            currentPassword = null;
           }
-          currentMachine = value;
-          currentLogin = null;
-          currentPassword = null;
-        } else if (key === "login" && value) {
-          currentLogin = value;
-        } else if (key === "password" && value) {
-          currentPassword = value;
+          i += 1;
+        } else if (key === "login") {
+          currentLogin = parts[i] ?? null;
+          i += 1;
+        } else if (key === "password") {
+          // Capture the rest of the line to handle passwords containing spaces
+          const passwordTokens = parts.slice(i);
+          currentPassword = passwordTokens.length > 0 ? passwordTokens.join(" ") : null;
+          break;
         }
       }
     }
@@ -114,7 +123,7 @@ export function encodeNetrcAuth(login: string, password: string): string {
 }
 
 export interface OctokitAuth {
-  auth?: string | { token?: string } & Record<string, unknown>;
+  auth?: string | Record<string, unknown>;
 }
 
 export async function applyNetrcAuth(
@@ -124,13 +133,8 @@ export async function applyNetrcAuth(
   const creds = await getNetrcCredentials(host);
 
   if (creds) {
-    const basicAuth = `Basic ${encodeNetrcAuth(creds.login, creds.password)}`;
-    // Apply as default header
-    if (!client.auth || typeof client.auth === "string") {
-      client.auth = { token: basicAuth };
-    } else {
-      client.auth.token = basicAuth;
-    }
+    // Use login:password format as expected by Octokit's basic auth strategy
+    client.auth = `${creds.login}:${creds.password}`;
   }
 }
 
@@ -141,8 +145,9 @@ export function redactNetrcAuth(auth: string | undefined): string {
   if (auth.startsWith("Basic ")) {
     return "netrc";
   }
-  if (auth.startsWith("token ")) {
-    return "token (redacted)";
+  // Detect login:password format used by netrc/basic auth
+  if (auth.includes(":") && !auth.startsWith("token ")) {
+    return "netrc";
   }
   return "token (redacted)";
 }

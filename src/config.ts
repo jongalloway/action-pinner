@@ -11,6 +11,7 @@ const DEFAULT_CONFIG: PinActionsConfig = {
   excludeActions: [],
   excludeRepos: [],
   org: {
+    type: "org",
     includePrivate: true,
     includeArchived: false
   },
@@ -156,10 +157,15 @@ function parseOrgConfig(value: unknown, path: string): PinActionsConfig["org"] {
     throw new Error(`Invalid config in ${path}: 'org' must be an object.`);
   }
 
-  assertNoUnknownKeys(value, ["name", "includePrivate", "includeArchived"], path, "org");
+  assertNoUnknownKeys(value, ["name", "type", "includePrivate", "includeArchived"], path, "org");
+
+  if (value.type !== undefined && value.type !== "org" && value.type !== "user") {
+    throw new Error(`Invalid config in ${path}: 'org.type' must be either 'org' or 'user'.`);
+  }
 
   return {
     name: value.name === undefined ? undefined : parseString(value.name, path, "org.name"),
+    type: value.type === undefined ? DEFAULT_CONFIG.org.type : value.type,
     includePrivate: parseBoolean(value.includePrivate, path, "org.includePrivate", DEFAULT_CONFIG.org.includePrivate),
     includeArchived: parseBoolean(value.includeArchived, path, "org.includeArchived", DEFAULT_CONFIG.org.includeArchived)
   };
@@ -278,7 +284,15 @@ function parseEnforcementExceptions(
       justification:
         entry.justification === undefined
           ? undefined
+<<<<<<< HEAD
           : parseString(entry.justification, path, `enforcement.exceptions[${index}].justification`),
+=======
+          : parseString(
+            entry.justification,
+            path,
+            `enforcement.exceptions[${index}].justification`
+          ),
+>>>>>>> origin/main
       expiresAt:
         entry.expiresAt === undefined
           ? undefined

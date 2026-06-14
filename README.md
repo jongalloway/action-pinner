@@ -171,6 +171,24 @@ Action inputs:
 - `allow_actions`, `exception_rules`
 - `json`
 
+## Pre-commit
+
+Use `pin-actions` as a [pre-commit](https://pre-commit.com/) hook to scan workflow changes before they land:
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/jongalloway/pin-actions
+    rev: v0.1.0
+    hooks:
+      - id: pin-actions-scan
+```
+
+Available hooks:
+
+- `pin-actions-scan`: runs `pin-actions scan` against `.github/workflows` and fails if unpinned refs are found.
+- `pin-actions-fix`: runs `pin-actions fix` against `.github/workflows` to auto-pin refs before commit.
+
 ## Configuration
 
 Example `.pin-actions.json`:
@@ -336,6 +354,7 @@ Rules:
 - **Fail closed:** unresolved refs, invalid exceptions, and policy violations fail enforcement by default.
 - **Token safe:** tokens are redacted from logs; use the smallest possible scopes.
 - **Deterministic output:** scans, rewrites, and fingerprints are stable on the same input.
+- **Provenance guidance:** see [docs/PROVENANCE.md](./docs/PROVENANCE.md) for trust, verification, and current supply-chain gaps.
 
 See [SECURITY.md](./SECURITY.md) for the security policy and [docs/ENTERPRISE.md](./docs/ENTERPRISE.md) for GHES guidance.
 

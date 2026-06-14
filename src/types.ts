@@ -28,6 +28,7 @@ export interface EnforcementException {
 
 export interface DependabotConfig {
   addVersionComments: boolean;
+  commentFormat: string;
   generateConfigSnippet: boolean;
 }
 

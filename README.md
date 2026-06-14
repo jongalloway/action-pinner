@@ -79,6 +79,7 @@ pin-actions fix
 pin-actions fix --dry-run
 pin-actions fix --path ".github/workflows/release.yml"
 pin-actions fix --continue-on-error --fail-on-ambiguous
+pin-actions fix --comment-format "pin@{ref}"
 ```
 
 Flags:
@@ -87,6 +88,7 @@ Flags:
 - All `scan` flags except `--json`
 - `--continue-on-error`: skip unresolved refs instead of failing the run
 - `--fail-on-ambiguous`: fail if a ref resolves ambiguously
+- `--comment-format <template>`: customize pinned version comments with `{ref}`, `{action}`, and `{sha_short}` tokens
 
 ### `enforce`
 
@@ -115,6 +117,7 @@ Pin refs, create a branch, and publish a pull request using the `pr` config bloc
 pin-actions pr
 pin-actions pr --path ".github/workflows"
 pin-actions pr --continue-on-error --fail-on-ambiguous
+pin-actions pr --comment-format "{ref}"
 ```
 
 Flags:
@@ -122,6 +125,7 @@ Flags:
 - All `scan` flags except `--json`
 - `--continue-on-error`: skip unresolved refs instead of failing the run
 - `--fail-on-ambiguous`: fail if a ref resolves ambiguously
+- `--comment-format <template>`: override the configured version comment template for this run
 
 ### `dependabot-snippet`
 
@@ -170,6 +174,24 @@ Action inputs:
 - `path`, `exclude_path`, `include_action`, `exclude_action`
 - `allow_actions`, `exception_rules`
 - `json`
+
+## Pre-commit
+
+Use `pin-actions` as a [pre-commit](https://pre-commit.com/) hook to scan workflow changes before they land:
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/jongalloway/pin-actions
+    rev: v0.1.0
+    hooks:
+      - id: pin-actions-scan
+```
+
+Available hooks:
+
+- `pin-actions-scan`: runs `pin-actions scan` against `.github/workflows` and fails if unpinned refs are found.
+- `pin-actions-fix`: runs `pin-actions fix` against `.github/workflows` to auto-pin refs before commit.
 
 ## Configuration
 
@@ -236,6 +258,11 @@ Example `.pin-actions.json`:
       "hubot"
     ]
   },
+  "dependabot": {
+    "addVersionComments": true,
+    "commentFormat": "{ref}",
+    "generateConfigSnippet": false
+  },
   "githubApiUrl": "https://enterprise.example.com/api/v3",
   "useNetrc": false
 }
@@ -246,6 +273,7 @@ Notes:
 - CLI flags override config values.
 - `reason` and `expiresAt` make exceptions easier to review and clean up.
 - `pr.create: false` creates the branch and commit without publishing a PR.
+- `dependabot.commentFormat` supports `{ref}`, `{action}`, and `{sha_short}` tokens. Use `""` for no version comment, or set `dependabot.addVersionComments: false` to suppress comments entirely.
 
 ## Authentication
 

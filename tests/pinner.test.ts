@@ -50,7 +50,7 @@ describe("pinReferences", () => {
     const resolve = vi.fn().mockResolvedValue({
       original: "actions/checkout@v4",
       sha: "fedcfedcfedcfedcfedcfedcfedcfedcfedcfedc",
-      comment: "v4",
+      comment: "legacy-comment",
       sourceRepo: "actions/checkout",
       resolutionMethod: "repos.getCommit",
       resolvedAt: "2026-06-09T19:00:00.000Z"
@@ -86,6 +86,133 @@ describe("pinReferences", () => {
       resolvedAt: "2026-06-09T19:00:00.000Z"
     });
   });
+
+  it("renders configurable comment templates with supported tokens", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    tempDirs.push(root);
+
+    const workflowDir = join(root, ".github", "workflows");
+    await mkdir(workflowDir, { recursive: true });
+    const filePath = join(workflowDir, "ci.yml");
+    await writeFile(
+      filePath,
+      [
+        "jobs:",
+        "  build:",
+        "    steps:",
+        "      - uses: actions/setup-node@v4"
+      ].join("\n"),
+      "utf8"
+    );
+
+    const patches = await pinReferences(
+      [makeReference(filePath, 4, "actions/setup-node", "v4")],
+      {
+        resolve: vi.fn().mockResolvedValue({
+          original: "actions/setup-node@v4",
+          sha: "1234567890abcdef1234567890abcdef12345678",
+          comment: "legacy-comment",
+          sourceRepo: "actions/setup-node",
+          resolutionMethod: "repos.getCommit",
+          resolvedAt: "2026-06-09T19:00:00.000Z"
+        })
+      },
+      makeConfig({
+        dependabot: {
+          addVersionComments: true,
+          commentFormat: "pin@{ref} {action} {sha_short}",
+          generateConfigSnippet: false
+        }
+      }),
+      true
+    );
+
+    expect(patches[0].updatedContent).toContain(
+      "actions/setup-node@1234567890abcdef1234567890abcdef12345678 # pin@v4 actions/setup-node 1234567"
+    );
+  });
+
+  it("suppresses version comments when disabled or formatted as empty", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    tempDirs.push(root);
+
+    const workflowDir = join(root, ".github", "workflows");
+    await mkdir(workflowDir, { recursive: true });
+    const filePath = join(workflowDir, "ci.yml");
+    await writeFile(
+      filePath,
+      [
+        "jobs:",
+        "  build:",
+        "    steps:",
+        "      - uses: actions/checkout@v4",
+        "      - uses: actions/setup-node@v4"
+      ].join("\n"),
+      "utf8"
+    );
+
+    const baseResolution = {
+      original: "actions/checkout@v4",
+      sha: "fedcfedcfedcfedcfedcfedcfedcfedcfedcfedc",
+      comment: "legacy-comment",
+      sourceRepo: "actions/checkout",
+      resolutionMethod: "repos.getCommit",
+      resolvedAt: "2026-06-09T19:00:00.000Z"
+    };
+
+    const patches = await pinReferences(
+      [
+        makeReference(filePath, 4, "actions/checkout", "v4"),
+        makeReference(filePath, 5, "actions/setup-node", "v4")
+      ],
+      {
+        resolve: vi.fn(async (reference: ActionReference) => ({
+          ...baseResolution,
+          original: reference.raw,
+          sha:
+            reference.action === "actions/checkout"
+              ? "fedcfedcfedcfedcfedcfedcfedcfedcfedcfedc"
+              : "1234567890abcdef1234567890abcdef12345678",
+          sourceRepo: reference.action
+        }))
+      },
+      makeConfig({
+        dependabot: {
+          addVersionComments: false,
+          commentFormat: "pin@{ref}",
+          generateConfigSnippet: false
+        }
+      }),
+      true
+    );
+
+    expect(patches[0].updatedContent).toContain(
+      "- uses: actions/checkout@fedcfedcfedcfedcfedcfedcfedcfedcfedcfedc"
+    );
+    expect(patches[0].updatedContent).not.toContain("pin@v4");
+
+    const patchesWithEmptyTemplate = await pinReferences(
+      [makeReference(filePath, 4, "actions/checkout", "v4")],
+      {
+        resolve: vi.fn().mockResolvedValue({
+          ...baseResolution
+        })
+      },
+      makeConfig({
+        dependabot: {
+          addVersionComments: true,
+          commentFormat: "",
+          generateConfigSnippet: false
+        }
+      }),
+      true
+    );
+
+    expect(patchesWithEmptyTemplate[0].updatedContent).toContain(
+      "- uses: actions/checkout@fedcfedcfedcfedcfedcfedcfedcfedcfedcfedc"
+    );
+    expect(patchesWithEmptyTemplate[0].updatedContent).not.toContain("# ");
+  });
 });
 
 function makeReference(
@@ -105,8 +232,8 @@ function makeReference(
   };
 }
 
-function makeConfig(): PinActionsConfig {
-  return {
+function makeConfig(overrides: Partial<PinActionsConfig> = {}): PinActionsConfig {
+  const config: PinActionsConfig = {
     mode: "fix",
     include: [],
     exclude: [],
@@ -134,7 +261,29 @@ function makeConfig(): PinActionsConfig {
     },
     dependabot: {
       addVersionComments: true,
+      commentFormat: "{ref}",
       generateConfigSnippet: false
+    }
+  };
+
+  return {
+    ...config,
+    ...overrides,
+    org: {
+      ...config.org,
+      ...(overrides.org ?? {})
+    },
+    pr: {
+      ...config.pr,
+      ...(overrides.pr ?? {})
+    },
+    enforcement: {
+      ...config.enforcement,
+      ...(overrides.enforcement ?? {})
+    },
+    dependabot: {
+      ...config.dependabot,
+      ...(overrides.dependabot ?? {})
     }
   };
 }

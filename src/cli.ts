@@ -230,11 +230,15 @@ See docs/ENTERPRISE.md for enterprise deployments.
     .option("--exclude-repo <pattern...>", "Exclude repositories matching these patterns")
     .option("--continue-on-error", "Skip unresolved refs instead of failing", false)
     .option("--fail-on-ambiguous", "Fail on ambiguous refs (security mode)", false)
+    .option(
+      "--comment-format <template>",
+      "Version comment template; tokens: {ref}, {action}, {sha_short}"
+    )
     .option("--token <token>", "GitHub token for API authentication (overrides env vars)")
     .option("--github-api-url <url>", "GitHub API base URL (for GHES deployments)")
     .option("--use-netrc", "Use .netrc for authentication (if --token not provided)", false)
     .action(async (opts) => {
-      const config = await loadConfig(opts.config);
+      const config = applyCommentFormatOverride(await loadConfig(opts.config), opts.commentFormat);
       const include = resolveIncludePatterns(opts.path, config.include);
       const exclude = resolveExcludePatterns(opts.excludePath, config.exclude);
       const includeActions = resolveStringList(opts.includeAction, []);
@@ -439,11 +443,15 @@ See docs/ENTERPRISE.md for enterprise deployments.
     .option("--exclude-repo <pattern...>", "Exclude repositories matching these patterns")
     .option("--continue-on-error", "Skip unresolved refs instead of failing", false)
     .option("--fail-on-ambiguous", "Fail on ambiguous refs (security mode)", false)
+    .option(
+      "--comment-format <template>",
+      "Version comment template; tokens: {ref}, {action}, {sha_short}"
+    )
     .option("--token <token>", "GitHub token for API authentication (overrides env vars)")
     .option("--github-api-url <url>", "GitHub API base URL (for GHES deployments)")
     .option("--use-netrc", "Use .netrc for authentication (if --token not provided)", false)
     .action(async (opts) => {
-      const config = await loadConfig(opts.config);
+      const config = applyCommentFormatOverride(await loadConfig(opts.config), opts.commentFormat);
       const include = resolveIncludePatterns(opts.path, config.include);
       const exclude = resolveExcludePatterns(opts.excludePath, config.exclude);
       const includeActions = resolveStringList(opts.includeAction, []);
@@ -926,6 +934,23 @@ function formatEnforcementFinding(entry: EnforcementResult["allowed"][number]): 
 
 function countUpdatedReferences(patches: FilePatch[]): number {
   return patches.reduce((count, patch) => count + patch.referencesUpdated.length, 0);
+}
+
+function applyCommentFormatOverride(
+  config: PinActionsConfig,
+  commentFormat: string | undefined
+): PinActionsConfig {
+  if (commentFormat === undefined) {
+    return config;
+  }
+
+  return {
+    ...config,
+    dependabot: {
+      ...config.dependabot,
+      commentFormat
+    }
+  };
 }
 
 function printDryRunPreview(

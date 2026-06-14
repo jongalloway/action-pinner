@@ -20,6 +20,21 @@ npm install
 npm run build
 ```
 
+## Install
+
+Run directly without installing:
+
+```bash
+npx pin-actions scan
+npx pin-actions fix
+```
+
+Or install globally:
+
+```bash
+npm install -g pin-actions
+```
+
 Examples below use `pin-actions` on your PATH. From a local clone, you can also run `node dist/index.js <command>`.
 
 Scan for unpinned actions:

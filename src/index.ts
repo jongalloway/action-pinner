@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { runActionMode } from "./action-mode.js";
 import { runCli } from "./cli.js";
 

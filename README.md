@@ -336,6 +336,7 @@ Rules:
 - **Fail closed:** unresolved refs, invalid exceptions, and policy violations fail enforcement by default.
 - **Token safe:** tokens are redacted from logs; use the smallest possible scopes.
 - **Deterministic output:** scans, rewrites, and fingerprints are stable on the same input.
+- **Provenance guidance:** see [docs/PROVENANCE.md](./docs/PROVENANCE.md) for trust, verification, and current supply-chain gaps.
 
 See [SECURITY.md](./SECURITY.md) for the security policy and [docs/ENTERPRISE.md](./docs/ENTERPRISE.md) for GHES guidance.
 

@@ -17,7 +17,7 @@ npm test
 ```
 
 - `npm run lint` is type-check linting via `tsc --noEmit`.
-- `npm run build` produces `dist\index.js`.
+- `npm run build` produces `dist/index.js`. 
 - To test enforcement locally after a build, run:
 
 ```bash
@@ -26,7 +26,7 @@ node dist/index.js enforce
 
 ## Code structure
 
-Primary modules live in `src\`:
+Primary modules live in `src/`:
 
 - `cli.ts` - CLI command definitions and output rendering
 - `scanner.ts` - workflow discovery and `uses:` ref scanning
@@ -51,7 +51,7 @@ Related helpers also exist for Dependabot comments, auth, workflow path handling
 
 ## Change guidance
 
-- Prefer small, surgical edits in the relevant `src\` module and matching tests in `tests\`.
+- Prefer small, surgical edits in the relevant `src/` module and matching tests in `tests/`.
 - Keep CLI text, JSON output, config behavior, and README/docs aligned when behavior changes.
 - Validate behavior with the full repo checks before handing work back.
 

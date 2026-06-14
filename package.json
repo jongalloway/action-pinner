@@ -8,6 +8,7 @@
     "pin-actions": "dist/index.js"
   },
   "scripts": {
+    "prepare": "npm run build",
     "build": "tsc -p tsconfig.json",
     "clean": "rimraf dist",
     "dev": "tsx src/index.ts",

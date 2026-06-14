@@ -200,7 +200,10 @@ function renderCommentTemplate(
   reference: Pick<ActionReference, "action" | "ref">,
   sha: string
 ): string {
-  return template.replaceAll("{ref}", reference.ref ?? "")
-    .replaceAll("{action}", reference.action)
-    .replaceAll("{sha_short}", sha.slice(0, 7));
+  const shaShort = sha.slice(0, 7);
+  return template.replace(/\{(ref|action|sha_short)\}/g, (_match, token) => {
+    if (token === "ref") return reference.ref ?? "";
+    if (token === "action") return reference.action;
+    return shaShort;
+  });
 }

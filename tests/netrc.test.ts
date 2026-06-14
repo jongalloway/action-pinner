@@ -6,7 +6,6 @@ import { loadNetrc, getNetrcCredentials, encodeNetrcAuth } from "../src/netrc-au
 
 describe("netrc Authentication", () => {
   let tempDirs: string[] = [];
-  let lastNetrcPath: string = "";
 
   afterEach(async () => {
     await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true })));
@@ -18,7 +17,6 @@ describe("netrc Authentication", () => {
     const netrcPath = join(root, ".netrc");
     await writeFile(netrcPath, netrcContent, "utf8");
     try { await chmod(netrcPath, mode); } catch { /* chmod may not work on Windows */ }
-    lastNetrcPath = netrcPath;
     return netrcPath;
   }
 

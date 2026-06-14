@@ -341,10 +341,10 @@ See [SECURITY.md](./SECURITY.md) for the security policy and [docs/ENTERPRISE.md
 
 ## Acknowledgments
 
-This project was inspired by [mheap/pin-github-action](https://github.com/mheap/pin-github-action), which pioneered the idea of pinning GitHub Actions to commit SHAs. `pin-actions` is a completely new implementation built from scratch using modern Node.js and the GitHub REST/GraphQL APIs, designed to address long-standing community requests including:
+This project was inspired by [mheap/pin-github-action](https://github.com/mheap/pin-github-action), which pioneered the idea of pinning GitHub Actions to commit SHAs. `pin-actions` is a completely new implementation built from scratch using modern Node.js and the GitHub REST API, designed to address long-standing community requests including:
 
 - [Enterprise GitHub support](https://github.com/mheap/pin-github-action/issues/169)
-- [Netrc authentication](https://github.com/mheap/pin-github-action/issues/168)
+- [Support netrc auth](https://github.com/mheap/pin-github-action/issues/168)
 - [Published as a GitHub Action](https://github.com/mheap/pin-github-action/issues/141)
 - [Default to `.github/workflows/`](https://github.com/mheap/pin-github-action/issues/201)
 

@@ -586,6 +586,7 @@ function createDefaultConfig(): PinActionsConfig {
     },
     dependabot: {
       addVersionComments: false,
+      commentFormat: "{ref}",
       generateConfigSnippet: false
     }
   };

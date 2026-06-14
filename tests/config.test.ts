@@ -54,6 +54,11 @@ describe("loadConfig", () => {
                 expiresAt: "2099-12-31"
               }
             ]
+          },
+          dependabot: {
+            addVersionComments: true,
+            commentFormat: "pin@{ref}",
+            generateConfigSnippet: false
           }
         },
         null,
@@ -79,6 +84,18 @@ describe("loadConfig", () => {
     expect(config.enforcement.exceptions).toHaveLength(1);
     expect(config.enforcement.exceptions[0].justification).toBe("Legacy runner migration");
     expect(config.enforcement.exceptions[0].expiresAt).toBe("2099-12-31");
+    expect(config.dependabot.commentFormat).toBe("pin@{ref}");
+  });
+
+  it("defaults commentFormat to {ref}", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    tempDirs.push(root);
+
+    const configPath = join(root, ".pin-actions.json");
+    await writeFile(configPath, JSON.stringify({}), "utf8");
+
+    const config = await loadConfig(configPath);
+    expect(config.dependabot.commentFormat).toBe("{ref}");
   });
 
   it("fails on invalid top-level keys", async () => {
@@ -164,6 +181,22 @@ describe("loadConfig", () => {
 
     await expect(loadConfig(configPath)).rejects.toThrow(
       "unknown property 'enforcement.allowlist'"
+    );
+  });
+
+  it("fails with clear message for invalid dependabot commentFormat type", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    tempDirs.push(root);
+
+    const configPath = join(root, ".pin-actions.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({ dependabot: { commentFormat: true } }),
+      "utf8"
+    );
+
+    await expect(loadConfig(configPath)).rejects.toThrow(
+      "'dependabot.commentFormat' must be a string."
     );
   });
 

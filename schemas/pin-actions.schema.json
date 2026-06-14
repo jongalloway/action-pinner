@@ -113,6 +113,10 @@
       "additionalProperties": false,
       "properties": {
         "addVersionComments": { "type": "boolean" },
+        "commentFormat": {
+          "type": "string",
+          "description": "Template for pinned version comments. Supports {ref}, {action}, and {sha_short}. Use an empty string to omit the comment."
+        },
         "generateConfigSnippet": { "type": "boolean" }
       }
     },

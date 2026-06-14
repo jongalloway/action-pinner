@@ -152,6 +152,7 @@ function makeConfig(): PinActionsConfig {
     },
     dependabot: {
       addVersionComments: true,
+      commentFormat: "{ref}",
       generateConfigSnippet: false
     }
   };

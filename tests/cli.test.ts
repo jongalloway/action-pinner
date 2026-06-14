@@ -60,6 +60,52 @@ describe("runCli", () => {
     expect(await readFile(filePath, "utf8")).toBe(originalContent);
   });
 
+  it("applies --comment-format to fix dry runs", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    tempDirs.push(root);
+
+    const workflowDir = join(root, ".github", "workflows");
+    await mkdir(workflowDir, { recursive: true });
+    const filePath = join(workflowDir, "ci.yml");
+    await writeFile(
+      filePath,
+      [
+        "jobs:",
+        "  build:",
+        "    steps:",
+        "      - uses: actions/checkout@v4"
+      ].join("\n"),
+      "utf8"
+    );
+
+    vi.spyOn(ActionResolver.prototype, "resolve").mockResolvedValue({
+      original: "actions/checkout@v4",
+      sha: "fedcfedcfedcfedcfedcfedcfedcfedcfedcfedc",
+      comment: "legacy-comment",
+      sourceRepo: "actions/checkout",
+      resolutionMethod: "repos.getCommit",
+      resolvedAt: "2026-06-09T19:00:00.000Z"
+    });
+
+    const logs: string[] = [];
+    vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+
+    await runCli([
+      "fix",
+      "--dry-run",
+      "--path",
+      filePath,
+      "--comment-format",
+      "pin@{ref}"
+    ]);
+
+    expect(logs.join("\n")).toContain(
+      "+       - uses: actions/checkout@fedcfedcfedcfedcfedcfedcfedcfedcfedcfedc # pin@v4"
+    );
+  });
+
   it("enforce exits non-zero by default when unpinned refs are found", async () => {
     const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
     tempDirs.push(root);

@@ -97,6 +97,7 @@ function makeConfig(overrides: Partial<PinActionsConfig> = {}): PinActionsConfig
     },
     dependabot: {
       addVersionComments: true,
+      commentFormat: "{ref}",
       generateConfigSnippet: false
     },
     ...overrides

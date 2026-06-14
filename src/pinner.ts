@@ -52,11 +52,17 @@ export async function pinReferences(
         continue;
       }
 
+      const versionComment = renderCommentTemplate(
+        config.dependabot.commentFormat,
+        ref,
+        resolution.sha
+      );
+
       const lineIndex = ref.line - 1;
       const line = lines[lineIndex] ?? "";
       const updatedLine = rewriteUsesLine(line, resolution.sha, {
         addVersionComment: config.dependabot.addVersionComments,
-        comment: resolution.comment
+        comment: versionComment
       });
 
       lines[lineIndex] = updatedLine;
@@ -181,6 +187,20 @@ function rewriteUsesLine(
   }
 
   const [, prefix, quote, action, , closingQuote, suffix] = match;
-  const comment = options.addVersionComment ? ` # ${options.comment}` : "";
+  const renderedComment = options.comment.trim();
+  const comment =
+    options.addVersionComment && renderedComment.length > 0
+      ? ` # ${renderedComment}`
+      : "";
   return `${prefix}${quote}${action}@${sha}${closingQuote}${comment}${suffix}`;
+}
+
+function renderCommentTemplate(
+  template: string,
+  reference: Pick<ActionReference, "action" | "ref">,
+  sha: string
+): string {
+  return template.replaceAll("{ref}", reference.ref ?? "")
+    .replaceAll("{action}", reference.action)
+    .replaceAll("{sha_short}", sha.slice(0, 7));
 }

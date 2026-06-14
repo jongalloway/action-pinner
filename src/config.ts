@@ -31,6 +31,7 @@ const DEFAULT_CONFIG: PinActionsConfig = {
   },
   dependabot: {
     addVersionComments: true,
+    commentFormat: "{ref}",
     generateConfigSnippet: false
   }
 };
@@ -311,7 +312,7 @@ function parseDependabotConfig(
 
   assertNoUnknownKeys(
     value,
-    ["addVersionComments", "generateConfigSnippet"],
+    ["addVersionComments", "commentFormat", "generateConfigSnippet"],
     path,
     "dependabot"
   );
@@ -323,6 +324,10 @@ function parseDependabotConfig(
       "dependabot.addVersionComments",
       DEFAULT_CONFIG.dependabot.addVersionComments
     ),
+    commentFormat:
+      value.commentFormat === undefined
+        ? DEFAULT_CONFIG.dependabot.commentFormat
+        : parseString(value.commentFormat, path, "dependabot.commentFormat"),
     generateConfigSnippet: parseBoolean(
       value.generateConfigSnippet,
       path,

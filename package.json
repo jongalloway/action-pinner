@@ -11,7 +11,7 @@
     ".github/action.yml"
   ],
   "bin": {
-    "pin-actions": "dist/index.js"
+    "pin-actions": "dist/src/index.js"
   },
   "publishConfig": {
     "access": "public",

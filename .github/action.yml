@@ -45,6 +45,9 @@ outputs:
     description: "Deterministic run fingerprint"
   config_hash:
     description: "Deterministic config hash"
+branding:
+  icon: "lock"
+  color: "blue"
 runs:
   using: "node20"
   main: "../dist/index.js"

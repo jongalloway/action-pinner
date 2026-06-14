@@ -9,8 +9,8 @@ export interface NetrcCredentials {
   password: string;
 }
 
-export async function loadNetrc(): Promise<Map<string, NetrcCredentials>> {
-  const netrcPath = getNetrcPath();
+export async function loadNetrc(overridePath?: string): Promise<Map<string, NetrcCredentials>> {
+  const netrcPath = overridePath ?? getNetrcPath();
   const credentials = new Map<string, NetrcCredentials>();
 
   try {
@@ -90,9 +90,10 @@ export async function loadNetrc(): Promise<Map<string, NetrcCredentials>> {
 }
 
 export async function getNetrcCredentials(
-  host: string
+  host: string,
+  overridePath?: string
 ): Promise<NetrcCredentials | null> {
-  const credentials = await loadNetrc();
+  const credentials = await loadNetrc(overridePath);
 
   // Exact match
   if (credentials.has(host)) {

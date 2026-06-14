@@ -42,9 +42,9 @@ describe("Fail-Closed Behavior", () => {
       });
       const reference = makeReference("actions/setup-node", "v4");
 
-      const promise = resolver.resolve(reference);
+      const errorPromise = resolver.resolve(reference).catch((e) => e);
       await vi.advanceTimersByTimeAsync(100000);
-      const error = (await promise.catch((e) => e)) as UnresolvedRefError;
+      const error = (await errorPromise) as UnresolvedRefError;
       expect(error.name).toBe("UnresolvedRefError");
       expect(error.details.ref).toBe("actions/setup-node@v4");
     });
@@ -67,9 +67,9 @@ describe("Fail-Closed Behavior", () => {
       const ref1 = makeReference("actions/checkout", "v4");
       const ref2 = makeReference("actions/setup-node", "v4");
 
-      const promise1 = resolver.resolve(ref1);
+      const errorPromise1 = resolver.resolve(ref1).catch((e) => e);
       await vi.advanceTimersByTimeAsync(100000);
-      const error1 = await promise1.catch((e) => e);
+      const error1 = await errorPromise1;
       expect(error1.name).toBe("UnresolvedRefError");
 
       const result2 = await resolver.resolve(ref2);
@@ -90,10 +90,10 @@ describe("Fail-Closed Behavior", () => {
       });
       const reference = makeReference("actions/nonexistent", "v999");
 
-      const promise = resolver.resolve(reference);
+      const errorPromise = resolver.resolve(reference).catch((e) => e);
       await vi.advanceTimersByTimeAsync(100000);
 
-      const error = (await promise.catch((e) => e)) as UnresolvedRefError;
+      const error = (await errorPromise) as UnresolvedRefError;
       expect(error.name).toBe("UnresolvedRefError");
       expect(error.details.retryDetails?.maxAttempts).toBe(4);
       // MAX_ATTEMPTS is 4, so getCommit should be called 4 times
@@ -112,10 +112,10 @@ describe("Fail-Closed Behavior", () => {
       });
       const reference = makeReference("actions/missing", "v1");
 
-      const promise = resolver.resolve(reference);
+      const errorPromise = resolver.resolve(reference).catch((e) => e);
       await vi.advanceTimersByTimeAsync(100000);
 
-      const error = (await promise.catch((e) => e)) as UnresolvedRefError;
+      const error = (await errorPromise) as UnresolvedRefError;
       expect(error.name).toBe("UnresolvedRefError");
       expect(error.details.ref).toBe("actions/missing@v1");
     });
@@ -136,10 +136,10 @@ describe("Fail-Closed Behavior", () => {
       });
       const reference = makeReference("actions/test", "v1");
 
-      const promise = resolver.resolve(reference);
+      const errorPromise = resolver.resolve(reference).catch((e) => e);
       await vi.advanceTimersByTimeAsync(100000);
 
-      const error = (await promise.catch((e) => e)) as UnresolvedRefError;
+      const error = (await errorPromise) as UnresolvedRefError;
       expect(error.details.retryDetails?.maxAttempts).toBeGreaterThan(1);
     });
 
@@ -155,10 +155,10 @@ describe("Fail-Closed Behavior", () => {
       });
       const reference = makeReference("actions/checkout", "v4");
 
-      const promise = resolver.resolve(reference);
+      const errorPromise = resolver.resolve(reference).catch((e) => e);
       await vi.advanceTimersByTimeAsync(100000);
 
-      const error = (await promise.catch((e) => e)) as UnresolvedRefError;
+      const error = (await errorPromise) as UnresolvedRefError;
       expect(error.name).toBe("UnresolvedRefError");
       expect(getCommit.mock.calls.length).toBe(4);
     });
@@ -236,10 +236,10 @@ describe("Fail-Closed Behavior", () => {
       });
       const reference = makeReference("actions/missing", "v1");
 
-      const promise = resolver.resolve(reference);
+      const errorPromise = resolver.resolve(reference).catch((e) => e);
       await vi.advanceTimersByTimeAsync(100000);
 
-      const error = (await promise.catch((e) => e));
+      const error = await errorPromise;
       expect(error).toBeDefined();
       expect(error.name).toBe("UnresolvedRefError");
       // Exit 1 would be returned by CLI when error is thrown
@@ -263,9 +263,9 @@ describe("Fail-Closed Behavior", () => {
       const ref1 = makeReference("actions/missing", "v1");
       const ref2 = makeReference("actions/checkout", "v4");
 
-      const promise1 = resolver.resolve(ref1);
+      const errorPromise1 = resolver.resolve(ref1).catch((e) => e);
       await vi.advanceTimersByTimeAsync(100000);
-      const error1 = await promise1.catch((e) => e);
+      const error1 = await errorPromise1;
       expect(error1.name).toBe("UnresolvedRefError");
 
       const result2 = await resolver.resolve(ref2);

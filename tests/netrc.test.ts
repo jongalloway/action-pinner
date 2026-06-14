@@ -1,39 +1,32 @@
-import { mkdir, mkdtemp, rm, writeFile, chmod } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { loadNetrc, getNetrcCredentials, encodeNetrcAuth, getNetrcPath } from "../src/netrc-auth.js";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { loadNetrc, getNetrcCredentials, encodeNetrcAuth } from "../src/netrc-auth.js";
 
 describe("netrc Authentication", () => {
   let tempDirs: string[] = [];
-  let originalHome: string | undefined;
-
-  beforeEach(() => {
-    originalHome = process.env.HOME;
-  });
 
   afterEach(async () => {
-    process.env.HOME = originalHome;
     await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true })));
   });
 
-  async function createTempHome(netrcContent: string, mode = 0o600): Promise<string> {
+  async function createTempNetrc(netrcContent: string, mode = 0o600): Promise<string> {
     const root = await mkdtemp(join(tmpdir(), "pin-actions-netrc-"));
     tempDirs.push(root);
     const netrcPath = join(root, ".netrc");
     await writeFile(netrcPath, netrcContent, "utf8");
-    await chmod(netrcPath, mode);
-    process.env.HOME = root;
-    return root;
+    try { await chmod(netrcPath, mode); } catch { /* chmod may not work on Windows */ }
+    return netrcPath;
   }
 
   describe("netrc parsing", () => {
     it("parses single machine entry", async () => {
-      await createTempHome(`machine github.com
+      const p = await createTempNetrc(`machine github.com
 login octocat
 password my_personal_token`);
 
-      const netrc = await loadNetrc();
+      const netrc = await loadNetrc(p);
 
       expect(netrc.has("github.com")).toBe(true);
       expect(netrc.get("github.com")).toEqual({
@@ -43,7 +36,7 @@ password my_personal_token`);
     });
 
     it("parses multiple machine entries", async () => {
-      await createTempHome(`machine github.com
+      const p = await createTempNetrc(`machine github.com
 login octocat
 password token1
 
@@ -51,7 +44,7 @@ machine enterprise.example.com
 login alice
 password token2`);
 
-      const netrc = await loadNetrc();
+      const netrc = await loadNetrc(p);
 
       expect(netrc.size).toBe(2);
       expect(netrc.get("github.com")).toEqual({
@@ -65,11 +58,11 @@ password token2`);
     });
 
     it("handles login/password on separate lines", async () => {
-      await createTempHome(`machine github.com
+      const p = await createTempNetrc(`machine github.com
 login user123
 password pass456`);
 
-      const netrc = await loadNetrc();
+      const netrc = await loadNetrc(p);
       const entry = netrc.get("github.com");
 
       expect(entry?.login).toBe("user123");
@@ -77,30 +70,30 @@ password pass456`);
     });
 
     it("handles passwords with spaces", async () => {
-      await createTempHome(`machine github.com
+      const p = await createTempNetrc(`machine github.com
 login user
 password my pass with spaces`);
 
-      const netrc = await loadNetrc();
+      const netrc = await loadNetrc(p);
       const entry = netrc.get("github.com");
 
       expect(entry?.password).toBe("my pass with spaces");
     });
 
     it("ignores comments in netrc file", async () => {
-      await createTempHome(`# This is a comment
+      const p = await createTempNetrc(`# This is a comment
 machine github.com
 login octocat
 # Another comment
 password token123`);
 
-      const netrc = await loadNetrc();
+      const netrc = await loadNetrc(p);
       expect(netrc.get("github.com")).toBeDefined();
       expect(netrc.get("github.com")?.login).toBe("octocat");
     });
 
     it("handles empty lines gracefully", async () => {
-      await createTempHome(`machine github.com
+      const p = await createTempNetrc(`machine github.com
 login user
 
 password pass
@@ -109,14 +102,14 @@ machine other.com
 login other_user
 password other_pass`);
 
-      const netrc = await loadNetrc();
+      const netrc = await loadNetrc(p);
       expect(netrc.size).toBe(2);
     });
 
     it("parses inline format (machine/login/password on one line)", async () => {
-      await createTempHome("machine github.com login octocat password ghp_token123");
+      const p = await createTempNetrc("machine github.com login octocat password ghp_token123");
 
-      const netrc = await loadNetrc();
+      const netrc = await loadNetrc(p);
       const entry = netrc.get("github.com");
 
       expect(entry?.login).toBe("octocat");
@@ -126,11 +119,11 @@ password other_pass`);
 
   describe("netrc lookup", () => {
     it("finds credentials for exact host match", async () => {
-      await createTempHome(`machine github.com
+      const p = await createTempNetrc(`machine github.com
 login octocat
 password token123`);
 
-      const creds = await getNetrcCredentials("github.com");
+      const creds = await getNetrcCredentials("github.com", p);
 
       expect(creds).toEqual({
         login: "octocat",
@@ -139,28 +132,28 @@ password token123`);
     });
 
     it("returns null for host not in netrc", async () => {
-      await createTempHome(`machine github.com
+      const p = await createTempNetrc(`machine github.com
 login octocat
 password token123`);
 
-      const creds = await getNetrcCredentials("enterprise.example.com");
+      const creds = await getNetrcCredentials("enterprise.example.com", p);
 
       expect(creds).toBeNull();
     });
 
     it("matches wildcard entries for subdomains", async () => {
-      await createTempHome(`machine *.github.com
+      const p = await createTempNetrc(`machine *.github.com
 login user
 password pass`);
 
-      const creds = await getNetrcCredentials("api.github.com");
+      const creds = await getNetrcCredentials("api.github.com", p);
 
       expect(creds).not.toBeNull();
       expect(creds?.login).toBe("user");
     });
 
     it("prioritizes exact match over wildcard", async () => {
-      await createTempHome(`machine *.github.com
+      const p = await createTempNetrc(`machine *.github.com
 login wildcard_user
 password wildcard_pass
 
@@ -168,13 +161,13 @@ machine api.github.com
 login exact_user
 password exact_pass`);
 
-      const creds = await getNetrcCredentials("api.github.com");
+      const creds = await getNetrcCredentials("api.github.com", p);
 
       expect(creds?.login).toBe("exact_user");
     });
 
     it("handles multiple GHES instances", async () => {
-      await createTempHome(`machine github.com
+      const p = await createTempNetrc(`machine github.com
 login user1
 password token1
 
@@ -186,8 +179,8 @@ machine enterprise2.example.com
 login user3
 password token3`);
 
-      expect((await getNetrcCredentials("enterprise1.example.com"))?.login).toBe("user2");
-      expect((await getNetrcCredentials("enterprise2.example.com"))?.login).toBe("user3");
+      expect((await getNetrcCredentials("enterprise1.example.com", p))?.login).toBe("user2");
+      expect((await getNetrcCredentials("enterprise2.example.com", p))?.login).toBe("user3");
     });
   });
 
@@ -223,13 +216,15 @@ password token3`);
   });
 
   describe("netrc file permissions", () => {
-    it("warns if netrc file is world-readable", async () => {
+    const isWindows = process.platform === "win32";
+
+    it.skipIf(isWindows)("warns if netrc file is world-readable", async () => {
       const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      await createTempHome(`machine github.com
+      const p = await createTempNetrc(`machine github.com
 login user
 password pass`, 0o644);
 
-      await loadNetrc();
+      await loadNetrc(p);
 
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining("readable by others")
@@ -237,13 +232,13 @@ password pass`, 0o644);
       consoleSpy.mockRestore();
     });
 
-    it("does not warn when netrc file has correct permissions", async () => {
+    it.skipIf(isWindows)("does not warn when netrc file has correct permissions", async () => {
       const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      await createTempHome(`machine github.com
+      const p = await createTempNetrc(`machine github.com
 login user
 password pass`, 0o600);
 
-      await loadNetrc();
+      await loadNetrc(p);
 
       expect(consoleSpy).not.toHaveBeenCalled();
       consoleSpy.mockRestore();
@@ -254,19 +249,19 @@ password pass`, 0o600);
     it("returns empty map when netrc file does not exist", async () => {
       const root = await mkdtemp(join(tmpdir(), "pin-actions-netrc-empty-"));
       tempDirs.push(root);
-      process.env.HOME = root;
+      const nonexistentPath = join(root, ".netrc");
 
-      const netrc = await loadNetrc();
+      const netrc = await loadNetrc(nonexistentPath);
 
       expect(netrc.size).toBe(0);
     });
 
     it("returns null when --use-netrc but no entry for the host", async () => {
-      await createTempHome(`machine other.com
+      const p = await createTempNetrc(`machine other.com
 login user
 password pass`);
 
-      const creds = await getNetrcCredentials("github.com");
+      const creds = await getNetrcCredentials("github.com", p);
 
       expect(creds).toBeNull();
     });
@@ -274,12 +269,12 @@ password pass`);
 
   describe("Auth precedence with netrc", () => {
     it("uses CLI token over netrc", async () => {
-      await createTempHome(`machine github.com
+      const p = await createTempNetrc(`machine github.com
 login user
 password netrc_token`);
 
       const cliToken = "cli_token_xyz";
-      const netrcCreds = await getNetrcCredentials("github.com");
+      const netrcCreds = await getNetrcCredentials("github.com", p);
 
       // CLI token takes precedence when both are present
       const selected = cliToken || (netrcCreds ? `${netrcCreds.login}:${netrcCreds.password}` : undefined);
@@ -287,12 +282,12 @@ password netrc_token`);
     });
 
     it("uses netrc when no CLI or env token", async () => {
-      await createTempHome(`machine github.com
+      const p = await createTempNetrc(`machine github.com
 login user
 password netrc_token`);
 
       const cliToken = undefined;
-      const netrcCreds = await getNetrcCredentials("github.com");
+      const netrcCreds = await getNetrcCredentials("github.com", p);
 
       expect(cliToken).toBeUndefined();
       expect(netrcCreds?.login).toBe("user");

@@ -4,8 +4,18 @@
   "description": "Modern, maintained utility for pinning GitHub Actions to commit SHAs.",
   "type": "module",
   "main": "dist/index.js",
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE",
+    ".github/action.yml"
+  ],
   "bin": {
     "pin-actions": "dist/index.js"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "prepare": "npm run build",

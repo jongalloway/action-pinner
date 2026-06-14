@@ -8,11 +8,17 @@ export function getToolVersion(): Promise<string> {
 }
 
 async function readPackageVersion(): Promise<string> {
-  const packageJson = await readFile(new URL("../package.json", import.meta.url), "utf8");
-  const parsed = JSON.parse(packageJson) as { version?: unknown };
-  if (typeof parsed.version !== "string" || parsed.version.length === 0) {
-    throw new Error("Unable to determine tool version from package.json.");
+  for (const relativePath of ["../package.json", "../../package.json"]) {
+    try {
+      const packageJson = await readFile(new URL(relativePath, import.meta.url), "utf8");
+      const parsed = JSON.parse(packageJson) as { version?: unknown };
+      if (typeof parsed.version === "string" && parsed.version.length > 0) {
+        return parsed.version;
+      }
+    } catch {
+      // Try the next known package.json location.
+    }
   }
 
-  return parsed.version;
+  throw new Error("Unable to determine tool version from package.json.");
 }

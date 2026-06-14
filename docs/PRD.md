@@ -1,12 +1,12 @@
 # Product Requirements Document (PRD)
-**Product:** `pin-actions` (working name)  
+**Product:** `action-pinner` (working name)  
 **Type:** Open-source CLI + GitHub Action + optional GitHub App  
 **Version:** v1.0 PRD  
 **Date:** 2026-06-09
 
 ## 1. Summary
 
-`pin-actions` is a modern, actively maintained replacement for the unmaintained `pin-github-action` project. It scans repositories for unpinned GitHub Actions, resolves tags/branches to immutable commit SHAs using modern GitHub APIs, rewrites workflow files safely, and creates pull requests with pinned updates.
+`action-pinner` is a modern, actively maintained replacement for the unmaintained `pin-github-action` project. It scans repositories for unpinned GitHub Actions, resolves tags/branches to immutable commit SHAs using modern GitHub APIs, rewrites workflow files safely, and creates pull requests with pinned updates.
 
 The tool targets both one-time migration (initial pinning) and ongoing governance (consistency and optional CI enforcement), with support for single-repo, multi-repo, and org-wide operation.
 
@@ -37,7 +37,7 @@ Teams need a reliable, maintained utility that can:
 5. Automatically create structured pull requests with changes.
 6. Support single repo, multi-repo, and org-wide scanning.
 7. Provide optional CI enforcement mode (fail when unpinned actions are detected).
-8. Offer configurable behavior via `.pin-actions.json`.
+8. Offer configurable behavior via `.action-pinner.json`.
 9. Run as both CLI and GitHub Action; optionally as GitHub App for autonomous operation.
 
 ---
@@ -63,12 +63,12 @@ Teams need a reliable, maintained utility that can:
 
 ## 6. User Stories
 
-1. As a repo maintainer, I can run `pin-actions scan` and see all unpinned actions.  
-2. As a maintainer, I can run `pin-actions fix` and get workflows rewritten to SHA pins with readable version comments.  
-3. As a maintainer, I can run `pin-actions pr` to automatically commit changes and open a PR.  
+1. As a repo maintainer, I can run `action-pinner scan` and see all unpinned actions.  
+2. As a maintainer, I can run `action-pinner fix` and get workflows rewritten to SHA pins with readable version comments.  
+3. As a maintainer, I can run `action-pinner pr` to automatically commit changes and open a PR.  
 4. As a security engineer, I can run org-wide scans and receive a report of non-compliant repos.  
-5. As a CI owner, I can run `pin-actions enforce` and fail builds if unpinned actions exist.  
-6. As an admin, I can define organization defaults in `.pin-actions.json`.  
+5. As a CI owner, I can run `action-pinner enforce` and fail builds if unpinned actions exist.  
+6. As an admin, I can define organization defaults in `.action-pinner.json`.  
 7. As a Dependabot user, I can keep `# vX.Y.Z` comments so future updates remain understandable and manageable.
 
 ---
@@ -115,7 +115,7 @@ Teams need a reliable, maintained utility that can:
 - Configurable severity/allowlists.
 - Supports GitHub Action usage for policy checks in PR pipelines.
 
-### FR7: Configuration Support (`.pin-actions.json`)
+### FR7: Configuration Support (`.action-pinner.json`)
 - Centralize behavior (resolver options, exclusions, PR settings, enforcement).
 - Support local config + CLI flags override precedence.
 - Validate schema and provide clear error messages.
@@ -156,14 +156,14 @@ flowchart LR
 - **YAML processing:** `yaml` (preferred) or `js-yaml`  
 - **Git operations:** `simple-git` or `isomorphic-git`  
 - **CLI framework:** modern Node CLI tooling (e.g., Commander/yargs)  
-- **Validation:** JSON schema for `.pin-actions.json`
+- **Validation:** JSON schema for `.action-pinner.json`
 
 ---
 
 ## 9. Component Breakdown
 
 1. **Config Module**
-   - Loads `.pin-actions.json`, validates schema, merges CLI overrides.
+   - Loads `.action-pinner.json`, validates schema, merges CLI overrides.
 
 2. **Scanner Module**
    - Discovers workflow files and extracts `uses:` references with file/line metadata.
@@ -195,11 +195,11 @@ flowchart LR
 
 ---
 
-## 10. Configuration (`.pin-actions.json`) – Initial Schema
+## 10. Configuration (`.action-pinner.json`) – Initial Schema
 
 ```json
 {
-  "$schema": "https://example.org/pin-actions.schema.json",
+  "$schema": "https://example.org/action-pinner.schema.json",
   "mode": "fix",
   "include": ["**/.github/workflows/*.yml", "**/.github/workflows/*.yaml"],
   "excludeRepos": ["experimental-*"],
@@ -211,7 +211,7 @@ flowchart LR
   },
   "pr": {
     "create": true,
-    "branchPrefix": "chore/pin-actions",
+    "branchPrefix": "chore/action-pinner",
     "title": "Pin GitHub Actions to commit SHAs",
     "labels": ["security", "dependencies"]
   },
@@ -238,7 +238,7 @@ flowchart LR
 | PR creation | Creates branch/commit/PR with structured body and list of modified workflows/actions. |
 | Multi-repo mode | Scans configured org/repo set and emits per-repo + aggregate results. |
 | CI enforcement | Returns non-zero exit code when policy violations exist; zero when compliant. |
-| Config | `.pin-actions.json` is schema-validated; CLI flags override file settings predictably. |
+| Config | `.action-pinner.json` is schema-validated; CLI flags override file settings predictably. |
 | Action mode | Can run in GitHub Actions with token-based auth and clear outputs. |
 | Reliability | Handles API rate limits/retries and reports unresolved refs without silent failure. |
 | Security | Uses least-privilege token scopes guidance and never logs secrets. |

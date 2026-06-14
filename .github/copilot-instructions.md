@@ -1,8 +1,8 @@
-# Copilot instructions for pin-actions
+# Copilot instructions for action-pinner
 
 ## Project overview
 
-- `pin-actions` is a TypeScript CLI and GitHub Action for finding mutable GitHub Actions refs like `@v4` or `@main`, resolving them to immutable commit SHAs, and enforcing that policy in CI.
+- `action-pinner` is a TypeScript CLI and GitHub Action for finding mutable GitHub Actions refs like `@v4` or `@main`, resolving them to immutable commit SHAs, and enforcing that policy in CI.
 - Core workflows are: scan existing workflow files, rewrite refs in place, enforce policy, and optionally create a PR with the pinned updates.
 
 ## Build and test
@@ -32,7 +32,7 @@ Primary modules live in `src/`:
 - `scanner.ts` - workflow discovery and `uses:` ref scanning
 - `resolver.ts` - GitHub ref-to-SHA resolution
 - `pinner.ts` - workflow rewriting and SHA pin insertion
-- `config.ts` - `.pin-actions.json` loading and defaults
+- `config.ts` - `.action-pinner.json` loading and defaults
 - `enforcement.ts` - allowlist / exception policy evaluation
 - `multi-repo-scanner.ts` - explicit repo and bulk repo scans
 - `org.ts` - org and user repository enumeration

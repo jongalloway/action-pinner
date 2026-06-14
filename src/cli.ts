@@ -47,7 +47,7 @@ export async function runCli(argv: string[] = process.argv.slice(2)) {
   const program = new Command();
 
   program
-    .name("pin-actions")
+    .name("action-pinner")
     .description("Pin GitHub Action refs to immutable commit SHAs.")
     .version("0.1.0")
     .addHelpText(
@@ -56,7 +56,7 @@ export async function runCli(argv: string[] = process.argv.slice(2)) {
 SECURITY & TRUST
 
   Fail-Closed Behavior:
-    If a ref cannot be resolved to a SHA, pin-actions fails (exit 1).
+    If a ref cannot be resolved to a SHA, action-pinner fails (exit 1).
     Use --continue-on-error to skip unresolved refs (logged as warnings).
 
   Token Safety:
@@ -72,35 +72,35 @@ SECURITY & TRUST
 EXAMPLES
 
   Scan for unpinned actions:
-    $ pin-actions scan
+    $ action-pinner scan
 
   GitHub Enterprise Server:
-    $ pin-actions scan --github-api-url https://enterprise.example.com/api/v3 --token $GHES_TOKEN
+    $ action-pinner scan --github-api-url https://enterprise.example.com/api/v3 --token $GHES_TOKEN
 
   Private repositories with .netrc:
-    $ pin-actions scan --use-netrc
+    $ action-pinner scan --use-netrc
 
   Dry run to preview changes:
-    $ pin-actions fix --dry-run
+    $ action-pinner fix --dry-run
 
   Pin all unpinned actions:
-    $ pin-actions fix
+    $ action-pinner fix
 
   Enforce policy in CI:
-    $ pin-actions enforce
+    $ action-pinner enforce
 
   Multi-repo targeting:
-    $ pin-actions scan --github-org acme --include-repo "platform-*" --exclude-repo "*-archive"
-    $ pin-actions scan --github-user octocat --include-repo "demo-*"
+    $ action-pinner scan --github-org acme --include-repo "platform-*" --exclude-repo "*-archive"
+    $ action-pinner scan --github-user octocat --include-repo "demo-*"
 
   Filter workflow paths and actions:
-    $ pin-actions scan --exclude-path ".github/workflows/legacy/**" --exclude-action "actions/cache"
+    $ action-pinner scan --exclude-path ".github/workflows/legacy/**" --exclude-action "actions/cache"
 
   Open a PR with pinned updates:
-    $ pin-actions pr --open
+    $ action-pinner pr --open
 
   Continue on errors:
-    $ pin-actions scan --continue-on-error
+    $ action-pinner scan --continue-on-error
 
 AUTHENTICATION PRECEDENCE
 
@@ -117,7 +117,7 @@ See docs/ENTERPRISE.md for enterprise deployments.
 
   program
     .command("scan")
-    .option("--config <path>", "Path to .pin-actions.json", ".pin-actions.json")
+    .option("--config <path>", "Path to .action-pinner.json", ".action-pinner.json")
     .option("-p, --path <path...>", "Workflow file, directory, or glob to scan")
     .option("--exclude-path <path...>", "Workflow file, directory, or glob to exclude")
     .option("--include-action <pattern...>", "Only include action refs matching these patterns")
@@ -218,7 +218,7 @@ See docs/ENTERPRISE.md for enterprise deployments.
   program
     .command("fix")
     .option("--dry-run", "Do not write files", false)
-    .option("--config <path>", "Path to .pin-actions.json", ".pin-actions.json")
+    .option("--config <path>", "Path to .action-pinner.json", ".action-pinner.json")
     .option("-p, --path <path...>", "Workflow file, directory, or glob to scan")
     .option("--exclude-path <path...>", "Workflow file, directory, or glob to exclude")
     .option("--include-action <pattern...>", "Only include action refs matching these patterns")
@@ -304,7 +304,7 @@ See docs/ENTERPRISE.md for enterprise deployments.
 
   program
     .command("enforce")
-    .option("--config <path>", "Path to .pin-actions.json", ".pin-actions.json")
+    .option("--config <path>", "Path to .action-pinner.json", ".action-pinner.json")
     .option("-p, --path <path...>", "Workflow file, directory, or glob to scan")
     .option("--exclude-path <path...>", "Workflow file, directory, or glob to exclude")
     .option("--include-action <pattern...>", "Only include action refs matching these patterns")
@@ -432,7 +432,7 @@ See docs/ENTERPRISE.md for enterprise deployments.
 
   program
     .command("pr")
-    .option("--config <path>", "Path to .pin-actions.json", ".pin-actions.json")
+    .option("--config <path>", "Path to .action-pinner.json", ".action-pinner.json")
     .option("-p, --path <path...>", "Workflow file, directory, or glob to scan")
     .option("--exclude-path <path...>", "Workflow file, directory, or glob to exclude")
     .option("--include-action <pattern...>", "Only include action refs matching these patterns")
@@ -530,7 +530,7 @@ See docs/ENTERPRISE.md for enterprise deployments.
     console.log(generateDependabotActionsSnippet());
   });
 
-  await program.parseAsync(["node", "pin-actions", ...argv]);
+  await program.parseAsync(["node", "action-pinner", ...argv]);
 }
 
 function resolveIncludePatterns(
@@ -831,7 +831,7 @@ function printScan(
     );
   }
   if (runDetails.command === "scan") {
-    console.log("Run `pin-actions fix` to pin these references.");
+    console.log("Run `action-pinner fix` to pin these references.");
   }
 
   printRunFingerprint(fingerprint, runDetails);
@@ -1032,5 +1032,5 @@ function toRunOutput(
 }
 
 function formatToolVersionForDisplay(toolVersion: string): string {
-  return toolVersion.startsWith("pin-actions@") ? toolVersion : `pin-actions@${toolVersion}`;
+  return toolVersion.startsWith("action-pinner@") ? toolVersion : `action-pinner@${toolVersion}`;
 }

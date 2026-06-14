@@ -12,7 +12,7 @@ describe("netrc Authentication", () => {
   });
 
   async function createTempNetrc(netrcContent: string, mode = 0o600): Promise<string> {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-netrc-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-netrc-"));
     tempDirs.push(root);
     const netrcPath = join(root, ".netrc");
     await writeFile(netrcPath, netrcContent, "utf8");
@@ -247,7 +247,7 @@ password pass`, 0o600);
 
   describe("netrc error handling", () => {
     it("returns empty map when netrc file does not exist", async () => {
-      const root = await mkdtemp(join(tmpdir(), "pin-actions-netrc-empty-"));
+      const root = await mkdtemp(join(tmpdir(), "action-pinner-netrc-empty-"));
       tempDirs.push(root);
       const nonexistentPath = join(root, ".netrc");
 

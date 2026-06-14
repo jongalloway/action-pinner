@@ -230,7 +230,7 @@ function captureLogs() {
 }
 
 async function createTempRepo(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+  const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
   tempDirs.push(root);
   await mkdir(join(root, ".github", "workflows"), { recursive: true });
   return root;
@@ -249,7 +249,7 @@ async function writeWorkflow(root: string, name: string, usesRefs: string[]): Pr
 }
 
 async function writeConfig(root: string, config: Record<string, unknown>): Promise<string> {
-  const configPath = join(root, ".pin-actions.json");
+  const configPath = join(root, ".action-pinner.json");
   await writeFile(configPath, JSON.stringify(config, null, 2), "utf8");
   return configPath;
 }

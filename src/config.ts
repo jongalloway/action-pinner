@@ -17,7 +17,7 @@ const DEFAULT_CONFIG: PinActionsConfig = {
   },
   pr: {
     create: true,
-    branchPrefix: "chore/pin-actions",
+    branchPrefix: "chore/action-pinner",
     title: "Pin GitHub Actions to commit SHAs",
     labels: [],
     reviewers: [],
@@ -54,7 +54,7 @@ const ALLOWED_TOP_LEVEL_KEYS = new Set([
 ]);
 
 export async function loadConfig(
-  configPath = ".pin-actions.json"
+  configPath = ".action-pinner.json"
 ): Promise<PinActionsConfig> {
   const path = resolve(configPath);
   try {

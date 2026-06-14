@@ -10,7 +10,7 @@ import { runCli } from "./cli.js";
 
 export async function runActionMode(): Promise<void> {
   const mode = process.env.INPUT_MODE ?? "scan";
-  const configPath = process.env.INPUT_CONFIG ?? ".pin-actions.json";
+  const configPath = process.env.INPUT_CONFIG ?? ".action-pinner.json";
   const args = buildCliArgs(mode, configPath);
 
   await runCli(args);

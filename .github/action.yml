@@ -1,15 +1,15 @@
-name: "pin-actions"
+name: "action-pinner"
 description: "Scan and pin unpinned GitHub Actions references to commit SHAs."
-author: "pin-actions contributors"
+author: "action-pinner contributors"
 inputs:
   mode:
     description: "Mode to run (scan|fix|enforce|pr)"
     required: false
     default: "scan"
   config:
-    description: "Path to .pin-actions.json"
+    description: "Path to .action-pinner.json"
     required: false
-    default: ".pin-actions.json"
+    default: ".action-pinner.json"
   path:
     description: "Workflow file, directory, or glob to scan"
     required: false

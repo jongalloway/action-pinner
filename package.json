@@ -25,6 +25,14 @@
     "cli"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jongalloway/pin-actions.git"
+  },
+  "homepage": "https://github.com/jongalloway/pin-actions#readme",
+  "bugs": {
+    "url": "https://github.com/jongalloway/pin-actions/issues"
+  },
   "dependencies": {
     "@octokit/rest": "^22.0.0",
     "commander": "^14.0.0",

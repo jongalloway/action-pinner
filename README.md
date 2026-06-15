@@ -1,61 +1,40 @@
 # action-pinner
 
+[![npm version](https://img.shields.io/npm/v/action-pinner.svg)](https://www.npmjs.com/package/action-pinner)
+[![CI](https://github.com/jongalloway/action-pinner/actions/workflows/ci.yml/badge.svg)](https://github.com/jongalloway/action-pinner/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/action-pinner.svg)](./LICENSE)
+
 Pin GitHub Actions refs like `@v4` or `@main` to immutable commit SHAs so your workflows are safer to review, harder to tamper with, and easier to reproduce. `action-pinner` scans workflow files, rewrites refs in place, enforces policy in CI, and can open a pull request with the changes.
-
-> **Node:** 20+ &nbsp;&nbsp; **License:** MIT
-
-## Why pin actions?
-
-- **Tags can move.** `@v4` and `@main` are mutable; a SHA is not.
-- **Supply chain risk goes down.** Pinning limits surprise changes from compromised or retagged releases.
-- **Builds become reproducible.** The same workflow definition resolves to the same code every time.
-- **Audits get easier.** SHA-based refs and exception metadata leave a clearer review trail.
 
 ## Quick Start
 
-Install dependencies and build the CLI:
+No install needed — just run:
 
 ```bash
-npm install
-npm run build
-```
-
-## Install
-
-Run directly without installing:
-
-```bash
-npx action-pinner scan
-npx action-pinner fix
+npx action-pinner scan                  # find unpinned refs
+npx action-pinner fix                   # pin them to SHAs
+npx action-pinner fix --dry-run         # preview without writing
 ```
 
 Or install globally:
 
 ```bash
 npm install -g action-pinner
-```
-
-Examples below use `action-pinner` on your PATH. From a local clone, you can also run `node dist/index.js <command>`.
-
-Scan for unpinned actions:
-
-```bash
 action-pinner scan
 ```
 
-Rewrite workflow files in place:
+> **Requires:** Node.js 20+
 
-```bash
-action-pinner fix
-```
+## Why Pin Actions?
 
-Fail CI when unpinned refs are found:
-
-```bash
-action-pinner enforce
-```
+- **Tags can move.** `@v4` and `@main` are mutable; a SHA is not.
+- **Supply chain risk goes down.** Pinning limits surprise changes from compromised or retagged releases.
+- **Builds become reproducible.** The same workflow definition resolves to the same code every time.
+- **Audits get easier.** SHA-based refs and exception metadata leave a clearer review trail.
 
 ## CLI Commands
+
+All commands work with `npx action-pinner <command>` or just `action-pinner <command>` if installed globally.
 
 ### `scan`
 

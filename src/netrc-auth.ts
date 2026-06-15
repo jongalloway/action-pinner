@@ -16,17 +16,19 @@ export async function loadNetrc(overridePath?: string): Promise<Map<string, Netr
   try {
     const content = await readFile(netrcPath, "utf8");
 
-    // Warn if .netrc is world-readable (security issue)
-    try {
-      const stats = statSync(netrcPath);
-      // eslint-disable-next-line no-bitwise
-      if ((stats.mode & 0o077) !== 0) {
-        console.warn(
-          `Warning: ${netrcPath} is readable by others. Fix with: chmod 600 ${netrcPath}`
-        );
+    // Warn if .netrc is world-readable (security issue) - skip on Windows where chmod is a no-op
+    if (process.platform !== "win32") {
+      try {
+        const stats = statSync(netrcPath);
+        // eslint-disable-next-line no-bitwise
+        if ((stats.mode & 0o077) !== 0) {
+          console.warn(
+            `Warning: ${netrcPath} is readable by others. Fix with: chmod 600 ${netrcPath}`
+          );
+        }
+      } catch {
+        // Ignore stat errors
       }
-    } catch {
-      // Ignore stat errors
     }
 
     const lines = content.split("\n");

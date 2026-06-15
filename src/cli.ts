@@ -5,7 +5,6 @@ import type {
   EnforcementResult,
   EnforcementException,
   FilePatch,
-  MultiRepoEnforcementEntry,
   MultiRepoEnforcementResult,
   PinActionsConfig,
   ScanResult
@@ -634,7 +633,7 @@ async function resolveRepoTargets(
     archived: false
   }));
 
-  if (targetName || candidates.length > 0 || includePatterns.length > 0 || excludePatterns.length > 0) {
+  if (targetName || candidates.length > 0) {
     const { filterRepositoryMetadata, listOwnerRepositories } = await import("./org.js");
 
     if (targetName && targetType) {
@@ -982,7 +981,7 @@ function printEnforcementSections(
   }
 }
 
-function formatEnforcementFinding(entry: MultiRepoEnforcementEntry["enforcement"]["allowed"][number]): string {
+function formatEnforcementFinding(entry: EnforcementResult["allowed"][number]): string {
   return `${toDisplayPath(entry.filePath)}:${entry.line} -> ${entry.raw} (${entry.message})`;
 }
 

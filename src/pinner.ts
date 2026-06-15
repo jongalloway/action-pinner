@@ -74,7 +74,8 @@ export async function pinReferences(
         resolvedSha: resolution.sha,
         sourceRepo: resolution.sourceRepo,
         resolutionMethod: resolution.resolutionMethod,
-        resolvedAt: resolution.resolvedAt
+        resolvedAt: resolution.resolvedAt,
+        githubApiUrl: resolution.githubApiUrl
       });
     }
 

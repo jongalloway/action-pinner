@@ -172,7 +172,8 @@ export class ActionResolver {
           comment: ref,
           sourceRepo: `${owner}/${repo}`,
           resolutionMethod: RESOLUTION_METHOD,
-          resolvedAt: new Date().toISOString()
+          resolvedAt: new Date().toISOString(),
+          githubApiUrl: this.getBaseUrl()
         };
         this.cache.set(cacheKey, result);
         return result;
@@ -295,4 +296,3 @@ export class ActionResolver {
 
 export { AmbiguousRefError, UnresolvedRefError } from "./types.js";
 export { applyNetrcAuth, redactNetrcAuth } from "./netrc-auth.js";
-

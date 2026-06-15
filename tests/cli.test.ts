@@ -242,6 +242,41 @@ describe("runCli", () => {
     expect(output.allowed[0].reason).toBe("allowlist");
   });
 
+  it("enforce supports markdown report output", async () => {
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
+    tempDirs.push(root);
+
+    const workflowDir = join(root, ".github", "workflows");
+    await mkdir(workflowDir, { recursive: true });
+    const workflowPath = join(workflowDir, "unpinned.yml");
+    await writeFile(
+      workflowPath,
+      [
+        "jobs:",
+        "  build:",
+        "    steps:",
+        "      - uses: actions/checkout@v4"
+      ].join("\n"),
+      "utf8"
+    );
+
+    const logs: string[] = [];
+    vi.spyOn(console, "log").mockImplementation((...args) => {
+      logs.push(args.join(" "));
+    });
+
+    process.exitCode = undefined;
+    await runCli(["enforce", "--report", "markdown", "--path", workflowPath]);
+
+    expect(process.exitCode).toBe(1);
+    const output = logs.join("\n");
+    expect(output).toContain("# action-pinner enforce report");
+    expect(output).toContain("actions/checkout@v4");
+    expect(output).toContain("| File | Line | Action |");
+    expect(output).toContain("## Run fingerprint");
+    process.exitCode = undefined;
+  });
+
   it("enforce fails closed on expired exceptions with clear messaging", async () => {
     const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);

@@ -79,6 +79,7 @@ export interface ResolutionResult {
   sourceRepo: string;
   resolutionMethod: string;
   resolvedAt: string;
+  githubApiUrl?: string;
 }
 
 export interface PinEvidence {
@@ -89,6 +90,7 @@ export interface PinEvidence {
   sourceRepo: string;
   resolutionMethod: string;
   resolvedAt: string;
+  githubApiUrl?: string;
 }
 
 export interface FilePatch {

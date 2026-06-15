@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { loadConfig } from "./config.js";
 import type {
+  ActionReference,
   EnforcementResult,
   EnforcementException,
   FilePatch,
@@ -25,6 +26,13 @@ interface RunExecutionDetails {
   continueOnError?: boolean;
   failOnAmbiguous?: boolean;
   prCreate?: boolean;
+}
+
+type ReportFormat = "markdown" | "html";
+
+interface OutputBlock {
+  content: string;
+  label?: string;
 }
 
 export async function runCli(argv: string[] = process.argv.slice(2)) {
@@ -112,10 +120,14 @@ See docs/ENTERPRISE.md for enterprise deployments.
     .option("--include-repo <pattern...>", "Include only repositories matching these patterns")
     .option("--exclude-repo <pattern...>", "Exclude repositories matching these patterns")
     .option("--json", "Emit JSON output", false)
+    .addOption(
+      new Option("--report <format>", "Export report output").choices(["markdown", "html"])
+    )
     .option("--token <token>", "GitHub token for API authentication (overrides env vars)")
     .option("--github-api-url <url>", "GitHub API base URL (for GHES deployments)")
     .option("--use-netrc", "Use .netrc for authentication (if --token not provided)", false)
     .action(async (opts) => {
+      assertExclusiveOutputs(opts.json, opts.report);
       const config = await loadConfig(opts.config);
       const include = resolveIncludePatterns(opts.path, config.include);
       const exclude = resolveExcludePatterns(opts.excludePath, config.exclude);
@@ -131,6 +143,10 @@ See docs/ENTERPRISE.md for enterprise deployments.
         targets.explicitRepositories.length > 0 ||
         targets.includePatterns.length > 0 ||
         targets.excludePatterns.length > 0;
+
+      if (opts.report && (targets.repositories.length > 0 || requestedMultiRepo)) {
+        throw new Error("--report is currently supported only for local scan output.");
+      }
 
       if (targets.repositories.length > 0) {
         const [{ applyEnforcementExceptions }, { scanRepositories }] = await Promise.all([
@@ -202,11 +218,22 @@ See docs/ENTERPRISE.md for enterprise deployments.
         }),
         config.enforcement.exceptions
       );
-      printScan(result, config, fingerprint, {
+      if (opts.report) {
+        const { formatUnpinnedHtml, formatUnpinnedMarkdown } = await import("./table-formatter.js");
+        console.log(
+          opts.report === "html"
+            ? formatUnpinnedHtml(result.unpinned, fingerprint)
+            : formatUnpinnedMarkdown(result.unpinned, fingerprint)
+        );
+        return;
+      }
+
+      const { formatUnpinnedTable } = await import("./table-formatter.js");
+      printScan(result, fingerprint, {
         command: "scan",
         target: "local",
         output: opts.json ? "json" : "text"
-      });
+      }, formatUnpinnedTable);
     });
 
   program
@@ -228,6 +255,9 @@ See docs/ENTERPRISE.md for enterprise deployments.
       "--comment-format <template>",
       "Version comment template; tokens: {ref}, {action}, {sha_short}"
     )
+    .addOption(
+      new Option("--report <format>", "Export report output").choices(["markdown", "html"])
+    )
     .option("--token <token>", "GitHub token for API authentication (overrides env vars)")
     .option("--github-api-url <url>", "GitHub API base URL (for GHES deployments)")
     .option("--use-netrc", "Use .netrc for authentication (if --token not provided)", false)
@@ -240,13 +270,15 @@ See docs/ENTERPRISE.md for enterprise deployments.
       const [
         { applyEnforcementExceptions },
         { pinReferences },
-        { buildRunFingerprint, formatEvidence },
+        { buildRunFingerprint, collectEvidence, formatEvidence },
+        { formatEvidenceHtml, formatEvidenceMarkdown, formatEvidenceTable },
         { ActionResolver },
         { scanWorkflows }
       ] = await Promise.all([
         import("./enforcement.js"),
         import("./pinner.js"),
         import("./report.js"),
+        import("./table-formatter.js"),
         import("./resolver.js"),
         import("./scanner.js")
       ]);
@@ -285,17 +317,35 @@ See docs/ENTERPRISE.md for enterprise deployments.
           continueOnError: Boolean(opts.continueOnError),
           failOnAmbiguous: Boolean(opts.failOnAmbiguous)
         };
+        const evidenceOutput = buildEvidenceOutput(
+          patches,
+          fingerprint,
+          opts.report,
+          process.stdout.isTTY,
+          {
+            collectEvidence,
+            formatEvidence,
+            formatEvidenceTable,
+            formatEvidenceMarkdown,
+            formatEvidenceHtml
+          }
+        );
+
+        if (opts.report) {
+          console.log(evidenceOutput.content);
+          return;
+        }
 
         if (opts.dryRun) {
           console.log(
             `Dry run complete. ${patches.length} file(s) would be updated across ${countUpdatedReferences(patches)} reference(s).`
           );
-          printDryRunPreview(patches, fingerprint, runDetails, formatEvidence);
+          printDryRunPreview(patches, fingerprint, runDetails, evidenceOutput);
         } else {
           console.log(
             `Updated ${patches.length} file(s) across ${countUpdatedReferences(patches)} reference(s).`
           );
-          printEvidenceReport(patches, formatEvidence);
+          printEvidenceReport(evidenceOutput);
           printRunFingerprint(fingerprint, runDetails);
         }
       } catch (error) {
@@ -327,12 +377,16 @@ See docs/ENTERPRISE.md for enterprise deployments.
       "Enforcement exception rule: <action>[@ref][::workflow-glob]"
     )
     .option("--json", "Emit JSON output", false)
+    .addOption(
+      new Option("--report <format>", "Export report output").choices(["markdown", "html"])
+    )
     .option("--continue-on-error", "Skip unresolved refs instead of failing", false)
     .option("--fail-on-ambiguous", "Fail on ambiguous refs (security mode)", false)
     .option("--token <token>", "GitHub token for API authentication (overrides env vars)")
     .option("--github-api-url <url>", "GitHub API base URL (for GHES deployments)")
     .option("--use-netrc", "Use .netrc for authentication (if --token not provided)", false)
     .action(async (opts) => {
+      assertExclusiveOutputs(opts.json, opts.report);
       const config = await loadConfig(opts.config);
       const include = resolveIncludePatterns(opts.path, config.include);
       const exclude = resolveExcludePatterns(opts.excludePath, config.exclude);
@@ -351,6 +405,9 @@ See docs/ENTERPRISE.md for enterprise deployments.
         targets.explicitRepositories.length > 0 ||
         targets.includePatterns.length > 0 ||
         targets.excludePatterns.length > 0;
+      if (opts.report && (targets.repositories.length > 0 || requestedMultiRepo)) {
+        throw new Error("--report is currently supported only for local enforce output.");
+      }
       const toolVersion = await getToolVersion();
       const fingerprint = buildRunFingerprint(config, toolVersion);
       const runDetails: RunExecutionDetails = {
@@ -441,6 +498,18 @@ See docs/ENTERPRISE.md for enterprise deployments.
           exceptions
         }
       );
+      if (opts.report) {
+        const { formatEnforcementHtml, formatEnforcementMarkdown } = await import("./table-formatter.js");
+        console.log(
+          opts.report === "html"
+            ? formatEnforcementHtml(result, fingerprint)
+            : formatEnforcementMarkdown(result, fingerprint)
+        );
+        if (!result.compliant && config.enforcement.failOnUnpinned) {
+          process.exitCode = 1;
+        }
+        return;
+      }
       printEnforcement(result, fingerprint, runDetails);
       if (!result.compliant && config.enforcement.failOnUnpinned) {
         process.exitCode = 1;
@@ -871,9 +940,9 @@ function printMultiRepoEnforcement(
 
 function printScan(
   result: ScanResult,
-  config: PinActionsConfig,
   fingerprint: RunFingerprint,
-  runDetails: RunExecutionDetails
+  runDetails: RunExecutionDetails,
+  formatUnpinnedTable?: (references: ActionReference[]) => string
 ) {
   if (runDetails.output === "json") {
     console.log(JSON.stringify(toScanOutput(result, fingerprint, runDetails), null, 2));
@@ -887,10 +956,12 @@ function printScan(
   }
 
   console.log(`Found ${result.unpinned.length} unpinned action reference(s):`);
-  for (const entry of result.unpinned) {
-    console.log(
-      `- ${toDisplayPath(entry.filePath)}:${entry.line} -> ${entry.raw}`
-    );
+  if (process.stdout.isTTY && formatUnpinnedTable) {
+    console.log(formatUnpinnedTable(result.unpinned));
+  } else {
+    for (const entry of result.unpinned) {
+      console.log(`- ${toDisplayPath(entry.filePath)}:${entry.line} -> ${entry.raw}`);
+    }
   }
   if (runDetails.command === "scan") {
     console.log("Run `action-pinner fix` to pin these references.");
@@ -1019,7 +1090,7 @@ function printDryRunPreview(
   patches: FilePatch[],
   fingerprint: RunFingerprint,
   runDetails: RunExecutionDetails,
-  formatEvidence: (patches: FilePatch[]) => string = () => "- (unavailable)"
+  evidenceOutput: OutputBlock
 ) {
   if (patches.length === 0) {
     console.log("No changes would be made.");
@@ -1043,7 +1114,7 @@ function printDryRunPreview(
     }
   }
 
-  printEvidenceReport(patches, formatEvidence);
+  printEvidenceReport(evidenceOutput);
   printRunFingerprint(fingerprint, runDetails);
 }
 
@@ -1079,12 +1150,11 @@ function printRunFingerprint(
   }
 }
 
-function printEvidenceReport(
-  patches: FilePatch[],
-  formatEvidence: (patches: FilePatch[]) => string = () => "- (unavailable)"
-) {
-  console.log("\nEvidence:");
-  console.log(formatEvidence(patches));
+function printEvidenceReport(output: OutputBlock) {
+  if (output.label) {
+    console.log(`\n${output.label}`);
+  }
+  console.log(output.content);
 }
 
 function toRunOutput(
@@ -1099,4 +1169,48 @@ function toRunOutput(
 
 function formatToolVersionForDisplay(toolVersion: string): string {
   return toolVersion.startsWith("action-pinner@") ? toolVersion : `action-pinner@${toolVersion}`;
+}
+
+function assertExclusiveOutputs(json: boolean | undefined, report: string | undefined) {
+  if (json && report) {
+    throw new Error("Specify either --json or --report, not both.");
+  }
+}
+
+function buildEvidenceOutput(
+  patches: FilePatch[],
+  fingerprint: RunFingerprint,
+  reportFormat: ReportFormat | undefined,
+  isTty: boolean,
+  formatters: {
+    collectEvidence: (patches: FilePatch[]) => import("./types.js").PinEvidence[];
+    formatEvidence: (patches: FilePatch[]) => string;
+    formatEvidenceTable: (evidence: import("./types.js").PinEvidence[]) => string;
+    formatEvidenceMarkdown: (
+      evidence: import("./types.js").PinEvidence[],
+      fingerprint?: RunFingerprint
+    ) => string;
+    formatEvidenceHtml: (
+      evidence: import("./types.js").PinEvidence[],
+      fingerprint?: RunFingerprint
+    ) => string;
+  }
+): OutputBlock {
+  const evidence = formatters.collectEvidence(patches);
+  if (reportFormat === "markdown") {
+    return {
+      content: formatters.formatEvidenceMarkdown(evidence, fingerprint)
+    };
+  }
+
+  if (reportFormat === "html") {
+    return {
+      content: formatters.formatEvidenceHtml(evidence, fingerprint)
+    };
+  }
+
+  return {
+    label: "Evidence:",
+    content: isTty ? formatters.formatEvidenceTable(evidence) : formatters.formatEvidence(patches)
+  };
 }

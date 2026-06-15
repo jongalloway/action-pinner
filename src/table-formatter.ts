@@ -20,6 +20,21 @@ export function formatEvidenceTable(evidence: PinEvidence[]): string {
   );
 }
 
+export function formatEvidenceMarkdownTable(evidence: PinEvidence[]): string {
+  const rows = sortEvidence(evidence);
+  if (rows.length === 0) {
+    return "No pinned references found.";
+  }
+  return [
+    "| File | Line | Action | Pinned SHA | Commit |",
+    "|------|------|--------|------------|--------|",
+    ...rows.map(
+      (entry) =>
+        `| ${escapeMarkdownCell(toDisplayPath(entry.filePath))} | ${entry.line} | ${escapeMarkdownCell(entry.originalRef)} | \`${shortenSha(entry.resolvedSha)}\` | [View](${buildCommitUrl(entry)}) |`
+    )
+  ].join("\n");
+}
+
 export function formatEvidenceMarkdown(
   evidence: PinEvidence[],
   fingerprint?: RunFingerprint

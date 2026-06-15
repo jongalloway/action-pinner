@@ -2,7 +2,8 @@ import { Octokit } from "@octokit/rest";
 import { simpleGit, type SimpleGit } from "simple-git";
 import type { FilePatch, PinActionsConfig } from "./types.js";
 import { toDisplayPath } from "./workflow-paths.js";
-import { buildRunFingerprint, formatEvidence } from "./report.js";
+import { buildRunFingerprint, formatEvidence, collectEvidence } from "./report.js";
+import { formatEvidenceMarkdownTable } from "./table-formatter.js";
 import { getToolVersion } from "./version.js";
 
 export interface CreatePrOptions {
@@ -115,7 +116,7 @@ export async function publishPullRequest({
     branch,
     baseBranch,
     commitMessage,
-    evidence: formatEvidence(patches),
+    evidence: formatEvidenceMarkdownTable(collectEvidence(patches)),
     toolVersion: runFingerprint.toolVersion,
     configHash: runFingerprint.configHash,
     runFingerprint: runFingerprint.fingerprint
@@ -208,7 +209,7 @@ function buildPrTemplateContext(
     referenceCount: countUpdatedReferences(patches),
     files: files || "- (none)",
     references: references || "- (none)",
-    evidence: formatEvidence(patches),
+    evidence: formatEvidenceMarkdownTable(collectEvidence(patches)),
     branch: "",
     baseBranch: "",
     commitMessage: "",

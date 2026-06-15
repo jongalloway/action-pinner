@@ -5,11 +5,12 @@
   "type": "module",
   "main": "dist/index.js",
   "files": [
-    "dist/",
-    "README.md",
-    "LICENSE",
-    "action.yml"
-  ],
+      "dist/src/",
+      "dist/index.*",
+      "README.md",
+      "LICENSE",
+      "action.yml"
+    ],
   "bin": {
     "action-pinner": "dist/src/index.js"
   },

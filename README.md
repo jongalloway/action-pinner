@@ -2,6 +2,8 @@
 
 [![npm version](https://img.shields.io/npm/v/action-pinner.svg)](https://www.npmjs.com/package/action-pinner)
 [![CI](https://github.com/jongalloway/action-pinner/actions/workflows/ci.yml/badge.svg)](https://github.com/jongalloway/action-pinner/actions/workflows/ci.yml)
+[![Actions Pinned](https://img.shields.io/badge/Actions-%F0%9F%93%8C%20Pinned-blue.svg)](https://github.com/jongalloway/action-pinner/actions/workflows/ci.yml)
+[![Dependabot](https://img.shields.io/badge/Dependabot-enabled-brightgreen.svg?logo=dependabot)](https://github.com/jongalloway/action-pinner/network/updates)
 [![license](https://img.shields.io/npm/l/action-pinner.svg)](./LICENSE)
 
 Pin GitHub Actions refs like `@v4` or `@main` to immutable commit SHAs so your workflows are safer to review, harder to tamper with, and easier to reproduce. `action-pinner` scans workflow files, rewrites refs in place, enforces policy in CI, and can open a pull request with the changes.

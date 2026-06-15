@@ -1073,7 +1073,7 @@ function printRunFingerprint(
     lines.push(["Create PR", String(runDetails.prCreate)]);
   }
 
-  console.log("\n📋 Run fingerprint:");
+  console.log("\nRun fingerprint - reproducible proof-of-run (same inputs produce same hashes):");
   for (const [label, value] of lines) {
     console.log(`  ${(label + ":").padEnd(19)} ${value}`);
   }

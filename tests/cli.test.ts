@@ -55,7 +55,7 @@ describe("runCli", () => {
     );
     expect(logs.join("\n")).toContain("Evidence:");
     expect(logs.join("\n")).toContain("source=actions/checkout");
-    expect(logs.join("\n")).toContain("Run fingerprint:");
+    expect(logs.join("\n")).toContain("Run fingerprint - reproducible proof-of-run (same inputs produce same hashes):");
     expect(logs.join("\n")).toContain("Tool version:");
     expect(await readFile(filePath, "utf8")).toBe(originalContent);
   });

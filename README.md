@@ -8,7 +8,7 @@ Pin GitHub Actions refs like `@v4` or `@main` to immutable commit SHAs so your w
 
 ## Quick Start
 
-No install needed — just run:
+No install needed - just run:
 
 ```bash
 npx action-pinner scan                  # find unpinned refs

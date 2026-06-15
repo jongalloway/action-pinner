@@ -81,7 +81,7 @@ action-pinner prioritizes **safety over convenience**:
 
 ### PR Evidence
 - Each PR opened by action-pinner includes a "Why this SHA?" section
-- Evidence shows the ref → SHA mapping + resolution date
+- Evidence shows the ref -> SHA mapping + resolution date
 - Reviewers can audit the pinning decision
 
 ## CI Enforcement Allowlists & Exceptions

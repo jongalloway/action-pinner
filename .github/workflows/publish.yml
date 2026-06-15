@@ -6,7 +6,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write # Required for npm provenance
+  id-token: write # OIDC for npm trusted publishing + provenance
 
 jobs:
   publish:
@@ -22,5 +22,3 @@ jobs:
       - run: npm run build
       - run: npm test
       - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

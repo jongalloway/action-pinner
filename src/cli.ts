@@ -377,12 +377,16 @@ See docs/ENTERPRISE.md for enterprise deployments.
       "Enforcement exception rule: <action>[@ref][::workflow-glob]"
     )
     .option("--json", "Emit JSON output", false)
+    .addOption(
+      new Option("--report <format>", "Export report output").choices(["markdown", "html"])
+    )
     .option("--continue-on-error", "Skip unresolved refs instead of failing", false)
     .option("--fail-on-ambiguous", "Fail on ambiguous refs (security mode)", false)
     .option("--token <token>", "GitHub token for API authentication (overrides env vars)")
     .option("--github-api-url <url>", "GitHub API base URL (for GHES deployments)")
     .option("--use-netrc", "Use .netrc for authentication (if --token not provided)", false)
     .action(async (opts) => {
+      assertExclusiveOutputs(opts.json, opts.report);
       const config = await loadConfig(opts.config);
       const include = resolveIncludePatterns(opts.path, config.include);
       const exclude = resolveExcludePatterns(opts.excludePath, config.exclude);
@@ -401,6 +405,9 @@ See docs/ENTERPRISE.md for enterprise deployments.
         targets.explicitRepositories.length > 0 ||
         targets.includePatterns.length > 0 ||
         targets.excludePatterns.length > 0;
+      if (opts.report && (targets.repositories.length > 0 || requestedMultiRepo)) {
+        throw new Error("--report is currently supported only for local enforce output.");
+      }
       const toolVersion = await getToolVersion();
       const fingerprint = buildRunFingerprint(config, toolVersion);
       const runDetails: RunExecutionDetails = {
@@ -491,6 +498,18 @@ See docs/ENTERPRISE.md for enterprise deployments.
           exceptions
         }
       );
+      if (opts.report) {
+        const { formatEnforcementHtml, formatEnforcementMarkdown } = await import("./table-formatter.js");
+        console.log(
+          opts.report === "html"
+            ? formatEnforcementHtml(result, fingerprint)
+            : formatEnforcementMarkdown(result, fingerprint)
+        );
+        if (!result.compliant && config.enforcement.failOnUnpinned) {
+          process.exitCode = 1;
+        }
+        return;
+      }
       printEnforcement(result, fingerprint, runDetails);
       if (!result.compliant && config.enforcement.failOnUnpinned) {
         process.exitCode = 1;

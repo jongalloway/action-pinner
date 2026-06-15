@@ -1,4 +1,4 @@
-import type { ActionReference, PinEvidence } from "./types.js";
+import type { ActionReference, EnforcementResult, PinEvidence } from "./types.js";
 import type { RunFingerprint } from "./report.js";
 import { normalizeGithubApiUrl } from "./resolver.js";
 import { toDisplayPath } from "./workflow-paths.js";
@@ -30,7 +30,7 @@ export function formatEvidenceMarkdownTable(evidence: PinEvidence[]): string {
     "|------|------|--------|------------|--------|",
     ...rows.map(
       (entry) =>
-        `| ${escapeMarkdownCell(toDisplayPath(entry.filePath))} | ${entry.line} | ${escapeMarkdownCell(entry.originalRef)} | \`${shortenSha(entry.resolvedSha)}\` | [View](${buildCommitUrl(entry)}) |`
+        `| ${escapeMarkdownCell(toDisplayPath(entry.filePath))} | ${entry.line} | ${escapeMarkdownCell(entry.originalRef)} | \`${entry.resolvedSha}\` | [View](${buildCommitUrl(entry)}) |`
     )
   ].join("\n");
 }
@@ -40,6 +40,7 @@ export function formatEvidenceMarkdown(
   fingerprint?: RunFingerprint
 ): string {
   const rows = sortEvidence(evidence);
+  const generatedAt = new Date().toISOString();
   const body =
     rows.length === 0
       ? "No pinned references found."
@@ -48,14 +49,14 @@ export function formatEvidenceMarkdown(
           "|------|------|--------|------------|--------|",
           ...rows.map(
             (entry) =>
-              `| ${escapeMarkdownCell(toDisplayPath(entry.filePath))} | ${entry.line} | ${escapeMarkdownCell(entry.originalRef)} | \`${shortenSha(entry.resolvedSha)}\` | [View](${buildCommitUrl(entry)}) |`
+              `| ${escapeMarkdownCell(toDisplayPath(entry.filePath))} | ${entry.line} | ${escapeMarkdownCell(entry.originalRef)} | \`${entry.resolvedSha}\` | [View](${buildCommitUrl(entry)}) |`
           )
         ].join("\n");
 
   return [
     "# action-pinner report",
     "",
-    `Generated at: ${rows[0]?.resolvedAt ?? new Date().toISOString()}`,
+    `Generated at: ${generatedAt}`,
     "",
     body,
     formatFingerprintMarkdown(fingerprint)
@@ -69,7 +70,7 @@ export function formatEvidenceHtml(
   fingerprint?: RunFingerprint
 ): string {
   const rows = sortEvidence(evidence);
-  const generatedAt = rows[0]?.resolvedAt ?? new Date().toISOString();
+  const generatedAt = new Date().toISOString();
   const tableMarkup =
     rows.length === 0
       ? '<p class="empty">No pinned references found.</p>'
@@ -92,7 +93,7 @@ export function formatEvidenceHtml(
               `      <td>${escapeHtml(toDisplayPath(entry.filePath))}</td>`,
               `      <td>${entry.line}</td>`,
               `      <td><code>${escapeHtml(entry.originalRef)}</code></td>`,
-              `      <td><code>${escapeHtml(shortenSha(entry.resolvedSha))}</code></td>`,
+              `      <td><code>${escapeHtml(entry.resolvedSha)}</code></td>`,
               `      <td><a href="${commitUrl}">View commit</a></td>`,
               "    </tr>"
             ].join("\n");
@@ -151,6 +152,29 @@ export function formatUnpinnedMarkdown(
   references: ActionReference[],
   fingerprint?: RunFingerprint
 ): string {
+  return formatUnpinnedMarkdownWithTitle(
+    references,
+    "# action-pinner scan report",
+    fingerprint
+  );
+}
+
+export function formatEnforcementMarkdown(
+  result: EnforcementResult,
+  fingerprint?: RunFingerprint
+): string {
+  return formatUnpinnedMarkdownWithTitle(
+    result.violations,
+    "# action-pinner enforce report",
+    fingerprint
+  );
+}
+
+function formatUnpinnedMarkdownWithTitle(
+  references: ActionReference[],
+  title: string,
+  fingerprint?: RunFingerprint
+): string {
   const rows = sortReferences(references);
   const body =
     rows.length === 0
@@ -165,7 +189,7 @@ export function formatUnpinnedMarkdown(
         ].join("\n");
 
   return [
-    "# action-pinner scan report",
+    title,
     "",
     `Generated at: ${new Date().toISOString()}`,
     "",
@@ -178,6 +202,29 @@ export function formatUnpinnedMarkdown(
 
 export function formatUnpinnedHtml(
   references: ActionReference[],
+  fingerprint?: RunFingerprint
+): string {
+  return formatUnpinnedHtmlWithTitle(
+    references,
+    "action-pinner scan report",
+    fingerprint
+  );
+}
+
+export function formatEnforcementHtml(
+  result: EnforcementResult,
+  fingerprint?: RunFingerprint
+): string {
+  return formatUnpinnedHtmlWithTitle(
+    result.violations,
+    "action-pinner enforce report",
+    fingerprint
+  );
+}
+
+function formatUnpinnedHtmlWithTitle(
+  references: ActionReference[],
+  title: string,
   fingerprint?: RunFingerprint
 ): string {
   const rows = sortReferences(references);
@@ -212,7 +259,7 @@ export function formatUnpinnedHtml(
     '<html lang="en">',
     "<head>",
     '  <meta charset="utf-8">',
-    "  <title>action-pinner scan report</title>",
+    `  <title>${escapeHtml(title)}</title>`,
     "  <style>",
     "    body { font-family: Arial, sans-serif; margin: 32px; color: #1f2328; background: #ffffff; }",
     "    h1, h2 { margin-bottom: 12px; }",
@@ -227,7 +274,7 @@ export function formatUnpinnedHtml(
     "</head>",
     "<body>",
     "  <header>",
-    "    <h1>action-pinner scan report</h1>",
+    `    <h1>${escapeHtml(title)}</h1>`,
     `    <p class="meta">Generated at ${escapeHtml(new Date().toISOString())}</p>`,
     "  </header>",
     `  ${tableMarkup}`,
@@ -335,7 +382,7 @@ function shortenSha(sha: string): string {
 }
 
 function escapeMarkdownCell(value: string): string {
-  return value.replace(/\|/g, "\\|");
+  return value.replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
 }
 
 function escapeHtml(value: string): string {

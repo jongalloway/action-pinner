@@ -526,9 +526,18 @@ See docs/ENTERPRISE.md for enterprise deployments.
       }
     });
 
-  program.command("dependabot-snippet").action(() => {
-    console.log(generateDependabotActionsSnippet());
-  });
+  program
+    .command("dependabot-snippet")
+    .option("-p, --path <path...>", "Workflow file, directory, or glob to scan")
+    .option("--check", "Compare the generated snippet against .github/dependabot.yml", false)
+    .action(async (opts) => {
+      console.log(
+        await generateDependabotActionsSnippet({
+          includePatterns: opts.path,
+          check: opts.check
+        })
+      );
+    });
 
   await program.parseAsync(["node", "action-pinner", ...argv]);
 }

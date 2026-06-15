@@ -1,19 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { simpleGit } from "simple-git";
 import { loadConfig } from "./config.js";
-import { generateDependabotActionsSnippet } from "./dependabot.js";
-import { pinReferences } from "./pinner.js";
-import { createPullRequestBranch, publishPullRequest } from "./pr.js";
-import { buildRunFingerprint, formatEvidence } from "./report.js";
-import { ActionResolver } from "./resolver.js";
-import { scanWorkflows } from "./scanner.js";
-import { scanRepositories, type MultiRepoScanResult } from "./multi-repo-scanner.js";
-import {
-  applyEnforcementExceptions,
-  evaluateEnforcement,
-  evaluateMultiRepoEnforcement
-} from "./enforcement.js";
 import type {
   EnforcementResult,
   EnforcementException,
@@ -23,15 +10,12 @@ import type {
   ScanResult
 } from "./types.js";
 import { AmbiguousRefError, UnresolvedRefError } from "./types.js";
+import type { MultiRepoScanResult } from "./multi-repo-scanner.js";
+import type { RunFingerprint } from "./report.js";
 import { getToolVersion } from "./version.js";
 import { resolveWorkflowPatterns, toDisplayPath } from "./workflow-paths.js";
 import { safeLog } from "./logging.js";
-import {
-  filterRepositoryMetadata,
-  listOwnerRepositories,
-  type RepositoryMetadata,
-  type RepositoryOwnerType
-} from "./org.js";
+import type { RepositoryMetadata, RepositoryOwnerType } from "./org.js";
 
 interface RunExecutionDetails {
   command: "scan" | "fix" | "pr" | "enforce";
@@ -137,6 +121,7 @@ See docs/ENTERPRISE.md for enterprise deployments.
       const exclude = resolveExcludePatterns(opts.excludePath, config.exclude);
       const includeActions = resolveStringList(opts.includeAction, []);
       const excludeActions = resolveStringList(opts.excludeAction, config.excludeActions);
+      const { buildRunFingerprint } = await import("./report.js");
       const toolVersion = await getToolVersion();
       const fingerprint = buildRunFingerprint(config, toolVersion);
       const token = opts.token || process.env.PIN_ACTIONS_TOKEN || process.env.GITHUB_TOKEN;
@@ -148,6 +133,10 @@ See docs/ENTERPRISE.md for enterprise deployments.
         targets.excludePatterns.length > 0;
 
       if (targets.repositories.length > 0) {
+        const [{ applyEnforcementExceptions }, { scanRepositories }] = await Promise.all([
+          import("./enforcement.js"),
+          import("./multi-repo-scanner.js")
+        ]);
         const rawResult = await scanRepositories(targets.repositoryTargets, {
           includePatterns: include,
           excludePatterns: exclude,
@@ -158,7 +147,8 @@ See docs/ENTERPRISE.md for enterprise deployments.
         });
         const result = applyEnforcementExceptionsToMultiRepo(
           rawResult,
-          config.enforcement.exceptions
+          config.enforcement.exceptions,
+          applyEnforcementExceptions
         );
         printMultiRepoScan(result, targets, fingerprint, {
           command: "scan",
@@ -200,6 +190,10 @@ See docs/ENTERPRISE.md for enterprise deployments.
         return;
       }
 
+      const [{ applyEnforcementExceptions }, { scanWorkflows }] = await Promise.all([
+        import("./enforcement.js"),
+        import("./scanner.js")
+      ]);
       const result = applyEnforcementExceptions(
         await scanWorkflows(include, process.cwd(), {
           excludePatterns: exclude,
@@ -243,6 +237,19 @@ See docs/ENTERPRISE.md for enterprise deployments.
       const exclude = resolveExcludePatterns(opts.excludePath, config.exclude);
       const includeActions = resolveStringList(opts.includeAction, []);
       const excludeActions = resolveStringList(opts.excludeAction, config.excludeActions);
+      const [
+        { applyEnforcementExceptions },
+        { pinReferences },
+        { buildRunFingerprint, formatEvidence },
+        { ActionResolver },
+        { scanWorkflows }
+      ] = await Promise.all([
+        import("./enforcement.js"),
+        import("./pinner.js"),
+        import("./report.js"),
+        import("./resolver.js"),
+        import("./scanner.js")
+      ]);
       const result = applyEnforcementExceptions(
         await scanWorkflows(include, process.cwd(), {
           excludePatterns: exclude,
@@ -283,12 +290,12 @@ See docs/ENTERPRISE.md for enterprise deployments.
           console.log(
             `Dry run complete. ${patches.length} file(s) would be updated across ${countUpdatedReferences(patches)} reference(s).`
           );
-          printDryRunPreview(patches, fingerprint, runDetails);
+          printDryRunPreview(patches, fingerprint, runDetails, formatEvidence);
         } else {
           console.log(
             `Updated ${patches.length} file(s) across ${countUpdatedReferences(patches)} reference(s).`
           );
-          printEvidenceReport(patches);
+          printEvidenceReport(patches, formatEvidence);
           printRunFingerprint(fingerprint, runDetails);
         }
       } catch (error) {
@@ -332,6 +339,7 @@ See docs/ENTERPRISE.md for enterprise deployments.
       const allowActions = resolveStringList(opts.allowAction, config.enforcement.allowActions);
       const includeActions = resolveStringList(opts.includeAction, []);
       const excludeActions = resolveStringList(opts.excludeAction, config.excludeActions);
+      const { buildRunFingerprint } = await import("./report.js");
       const exceptions = [
         ...config.enforcement.exceptions,
         ...parseExceptionRules(opts.exception)
@@ -352,6 +360,10 @@ See docs/ENTERPRISE.md for enterprise deployments.
       };
 
       if (targets.repositories.length > 0) {
+        const [{ evaluateMultiRepoEnforcement }, { scanRepositories }] = await Promise.all([
+          import("./enforcement.js"),
+          import("./multi-repo-scanner.js")
+        ]);
         const rawResult = await scanRepositories(targets.repositoryTargets, {
           includePatterns: include,
           excludePatterns: exclude,
@@ -372,6 +384,7 @@ See docs/ENTERPRISE.md for enterprise deployments.
       }
 
       if (requestedMultiRepo) {
+        const { evaluateEnforcement } = await import("./enforcement.js");
         const emptyResult = evaluateEnforcement(
           {
             summary: {
@@ -413,6 +426,10 @@ See docs/ENTERPRISE.md for enterprise deployments.
         return;
       }
 
+      const [{ evaluateEnforcement }, { scanWorkflows }] = await Promise.all([
+        import("./enforcement.js"),
+        import("./scanner.js")
+      ]);
       const result = evaluateEnforcement(
         await scanWorkflows(include, process.cwd(), {
           excludePatterns: exclude,
@@ -456,6 +473,23 @@ See docs/ENTERPRISE.md for enterprise deployments.
       const exclude = resolveExcludePatterns(opts.excludePath, config.exclude);
       const includeActions = resolveStringList(opts.includeAction, []);
       const excludeActions = resolveStringList(opts.excludeAction, config.excludeActions);
+      const [
+        { applyEnforcementExceptions },
+        { pinReferences },
+        { createPullRequestBranch, publishPullRequest },
+        { buildRunFingerprint },
+        { ActionResolver },
+        { scanWorkflows },
+        { simpleGit }
+      ] = await Promise.all([
+        import("./enforcement.js"),
+        import("./pinner.js"),
+        import("./pr.js"),
+        import("./report.js"),
+        import("./resolver.js"),
+        import("./scanner.js"),
+        import("simple-git")
+      ]);
       const result = applyEnforcementExceptions(
         await scanWorkflows(include, process.cwd(), {
           excludePatterns: exclude,
@@ -531,6 +565,7 @@ See docs/ENTERPRISE.md for enterprise deployments.
     .option("-p, --path <path...>", "Workflow file, directory, or glob to scan")
     .option("--check", "Compare the generated snippet against .github/dependabot.yml or .github/dependabot.yaml", false)
     .action(async (opts) => {
+      const { generateDependabotActionsSnippet } = await import("./dependabot.js");
       console.log(
         await generateDependabotActionsSnippet({
           includePatterns: opts.path,
@@ -607,24 +642,41 @@ async function resolveRepoTargets(
     archived: false
   }));
 
-  if (targetName && targetType) {
-    const discoveredRepositories = await listOwnerRepositories(
-      {
-        target: targetName,
-        targetType,
-        includePrivate: config.org.includePrivate,
-        includeArchived: config.org.includeArchived,
-        githubApiUrl: opts.githubApiUrl || config.githubApiUrl
-      },
-      token
-    );
-    candidates.push(...discoveredRepositories);
-  }
+  if (targetName || candidates.length > 0) {
+    const { filterRepositoryMetadata, listOwnerRepositories } = await import("./org.js");
 
-  const repositories = filterRepositoryMetadata(candidates, {
-    includePatterns,
-    excludePatterns
-  });
+    if (targetName && targetType) {
+      const discoveredRepositories = await listOwnerRepositories(
+        {
+          target: targetName,
+          targetType,
+          includePrivate: config.org.includePrivate,
+          includeArchived: config.org.includeArchived,
+          githubApiUrl: opts.githubApiUrl || config.githubApiUrl
+        },
+        token
+      );
+      candidates.push(...discoveredRepositories);
+    }
+
+    const repositories = filterRepositoryMetadata(candidates, {
+      includePatterns,
+      excludePatterns
+    });
+
+    return {
+      targetName,
+      targetType,
+      explicitRepositories,
+      includePatterns,
+      excludePatterns,
+      repositories: repositories.map((repository) => repository.fullName),
+      repositoryTargets: repositories.map((repository) => ({
+        repository: repository.fullName,
+        defaultBranch: repository.defaultBranch || undefined
+      }))
+    };
+  }
 
   return {
     targetName,
@@ -632,11 +684,8 @@ async function resolveRepoTargets(
     explicitRepositories,
     includePatterns,
     excludePatterns,
-    repositories: repositories.map((repository) => repository.fullName),
-    repositoryTargets: repositories.map((repository) => ({
-      repository: repository.fullName,
-      defaultBranch: repository.defaultBranch || undefined
-    }))
+    repositories: [],
+    repositoryTargets: []
   };
 }
 
@@ -661,7 +710,11 @@ function parseExceptionRules(values: string[] | undefined): EnforcementException
 
 function applyEnforcementExceptionsToMultiRepo(
   result: MultiRepoScanResult,
-  exceptions: EnforcementException[]
+  exceptions: EnforcementException[],
+  applyEnforcementExceptions: (
+    result: ScanResult,
+    exceptions: EnforcementException[]
+  ) => ScanResult
 ): MultiRepoScanResult {
   if (exceptions.length === 0) {
     return result;
@@ -689,7 +742,7 @@ function applyEnforcementExceptionsToMultiRepo(
 function printMultiRepoScan(
   result: MultiRepoScanResult,
   targets: RepoTargetingResult,
-  fingerprint: ReturnType<typeof buildRunFingerprint>,
+  fingerprint: RunFingerprint,
   runDetails: RunExecutionDetails
 ) {
   if (runDetails.output === "json") {
@@ -751,7 +804,7 @@ function printMultiRepoScan(
 function printMultiRepoEnforcement(
   result: MultiRepoEnforcementResult,
   targets: RepoTargetingResult,
-  fingerprint: ReturnType<typeof buildRunFingerprint>,
+  fingerprint: RunFingerprint,
   runDetails: RunExecutionDetails
 ) {
   if (runDetails.output === "json") {
@@ -819,7 +872,7 @@ function printMultiRepoEnforcement(
 function printScan(
   result: ScanResult,
   config: PinActionsConfig,
-  fingerprint: ReturnType<typeof buildRunFingerprint>,
+  fingerprint: RunFingerprint,
   runDetails: RunExecutionDetails
 ) {
   if (runDetails.output === "json") {
@@ -848,7 +901,7 @@ function printScan(
 
 function printEnforcement(
   result: EnforcementResult,
-  fingerprint: ReturnType<typeof buildRunFingerprint>,
+  fingerprint: RunFingerprint,
   runDetails: RunExecutionDetails
 ) {
   if (runDetails.output === "json") {
@@ -881,7 +934,7 @@ function printEnforcement(
 
 function toScanOutput(
   result: ScanResult,
-  fingerprint: ReturnType<typeof buildRunFingerprint>,
+  fingerprint: RunFingerprint,
   runDetails: RunExecutionDetails
 ) {
   return {
@@ -894,7 +947,7 @@ function toScanOutput(
 
 function toEnforcementOutput(
   result: EnforcementResult,
-  fingerprint: ReturnType<typeof buildRunFingerprint>,
+  fingerprint: RunFingerprint,
   runDetails: RunExecutionDetails
 ) {
   return {
@@ -964,8 +1017,9 @@ function applyCommentFormatOverride(
 
 function printDryRunPreview(
   patches: FilePatch[],
-  fingerprint: ReturnType<typeof buildRunFingerprint>,
-  runDetails: RunExecutionDetails
+  fingerprint: RunFingerprint,
+  runDetails: RunExecutionDetails,
+  formatEvidence: (patches: FilePatch[]) => string = () => "- (unavailable)"
 ) {
   if (patches.length === 0) {
     console.log("No changes would be made.");
@@ -989,12 +1043,12 @@ function printDryRunPreview(
     }
   }
 
-  printEvidenceReport(patches);
+  printEvidenceReport(patches, formatEvidence);
   printRunFingerprint(fingerprint, runDetails);
 }
 
 function printRunFingerprint(
-  fingerprint: ReturnType<typeof buildRunFingerprint>,
+  fingerprint: RunFingerprint,
   runDetails: RunExecutionDetails
 ) {
   const lines: Array<[string, string]> = [
@@ -1025,13 +1079,16 @@ function printRunFingerprint(
   }
 }
 
-function printEvidenceReport(patches: FilePatch[]) {
+function printEvidenceReport(
+  patches: FilePatch[],
+  formatEvidence: (patches: FilePatch[]) => string = () => "- (unavailable)"
+) {
   console.log("\nEvidence:");
   console.log(formatEvidence(patches));
 }
 
 function toRunOutput(
-  fingerprint: ReturnType<typeof buildRunFingerprint>,
+  fingerprint: RunFingerprint,
   runDetails: RunExecutionDetails
 ) {
   return {

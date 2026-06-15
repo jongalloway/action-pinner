@@ -1,6 +1,6 @@
-# pin-actions
+# action-pinner
 
-Pin GitHub Actions refs like `@v4` or `@main` to immutable commit SHAs so your workflows are safer to review, harder to tamper with, and easier to reproduce. `pin-actions` scans workflow files, rewrites refs in place, enforces policy in CI, and can open a pull request with the changes.
+Pin GitHub Actions refs like `@v4` or `@main` to immutable commit SHAs so your workflows are safer to review, harder to tamper with, and easier to reproduce. `action-pinner` scans workflow files, rewrites refs in place, enforces policy in CI, and can open a pull request with the changes.
 
 > **Node:** 20+ &nbsp;&nbsp; **License:** MIT
 
@@ -25,34 +25,34 @@ npm run build
 Run directly without installing:
 
 ```bash
-npx pin-actions scan
-npx pin-actions fix
+npx action-pinner scan
+npx action-pinner fix
 ```
 
 Or install globally:
 
 ```bash
-npm install -g pin-actions
+npm install -g action-pinner
 ```
 
-Examples below use `pin-actions` on your PATH. From a local clone, you can also run `node dist/index.js <command>`.
+Examples below use `action-pinner` on your PATH. From a local clone, you can also run `node dist/index.js <command>`.
 
 Scan for unpinned actions:
 
 ```bash
-pin-actions scan
+action-pinner scan
 ```
 
 Rewrite workflow files in place:
 
 ```bash
-pin-actions fix
+action-pinner fix
 ```
 
 Fail CI when unpinned refs are found:
 
 ```bash
-pin-actions enforce
+action-pinner enforce
 ```
 
 ## CLI Commands
@@ -62,17 +62,17 @@ pin-actions enforce
 Find unpinned `uses:` refs without modifying files.
 
 ```bash
-pin-actions scan
-pin-actions scan --path ".github/workflows"
-pin-actions scan --exclude-path ".github/workflows/legacy/**"
-pin-actions scan --include-action "actions/*" --exclude-action "actions/cache"
-pin-actions scan --github-org octo-org --include-repo "platform-*" --exclude-repo "*-archive"
-pin-actions scan --repo octo-org/service-a octo-org/service-b --json
+action-pinner scan
+action-pinner scan --path ".github/workflows"
+action-pinner scan --exclude-path ".github/workflows/legacy/**"
+action-pinner scan --include-action "actions/*" --exclude-action "actions/cache"
+action-pinner scan --github-org octo-org --include-repo "platform-*" --exclude-repo "*-archive"
+action-pinner scan --repo octo-org/service-a octo-org/service-b --json
 ```
 
 Flags:
 
-- `--config <path>`: config file path (default: `.pin-actions.json`)
+- `--config <path>`: config file path (default: `.action-pinner.json`)
 - `--path <path...>`: workflow file, directory, or glob to scan
 - `--exclude-path <path...>`: workflow file, directory, or glob to skip
 - `--include-action <pattern...>`: only scan matching actions
@@ -90,11 +90,11 @@ Flags:
 Resolve mutable refs to SHAs and update workflow files in place.
 
 ```bash
-pin-actions fix
-pin-actions fix --dry-run
-pin-actions fix --path ".github/workflows/release.yml"
-pin-actions fix --continue-on-error --fail-on-ambiguous
-pin-actions fix --comment-format "pin@{ref}"
+action-pinner fix
+action-pinner fix --dry-run
+action-pinner fix --path ".github/workflows/release.yml"
+action-pinner fix --continue-on-error --fail-on-ambiguous
+action-pinner fix --comment-format "pin@{ref}"
 ```
 
 Flags:
@@ -110,10 +110,10 @@ Flags:
 Use policy mode for CI. `enforce` reports allowed refs, violations, invalid exceptions, and exits non-zero when policy fails.
 
 ```bash
-pin-actions enforce
-pin-actions enforce --allow-action "actions/*"
-pin-actions enforce --exception "actions/upload-artifact@v3::**/legacy.yml"
-pin-actions enforce --json
+action-pinner enforce
+action-pinner enforce --allow-action "actions/*"
+action-pinner enforce --exception "actions/upload-artifact@v3::**/legacy.yml"
+action-pinner enforce --json
 ```
 
 Flags:
@@ -129,10 +129,10 @@ Flags:
 Pin refs, create a branch, and publish a pull request using the `pr` config block.
 
 ```bash
-pin-actions pr
-pin-actions pr --path ".github/workflows"
-pin-actions pr --continue-on-error --fail-on-ambiguous
-pin-actions pr --comment-format "{ref}"
+action-pinner pr
+action-pinner pr --path ".github/workflows"
+action-pinner pr --continue-on-error --fail-on-ambiguous
+action-pinner pr --comment-format "{ref}"
 ```
 
 Flags:
@@ -147,18 +147,18 @@ Flags:
 Generate a `github-actions` Dependabot snippet for pinned workflows.
 
 ```bash
-pin-actions dependabot-snippet
+action-pinner dependabot-snippet
 ```
 
 ## GitHub Action Usage
 
-Run `pin-actions` as a GitHub Action:
+Run `action-pinner` as a GitHub Action:
 
 ```yaml
-- uses: jongalloway/pin-actions@v1
+- uses: jongalloway/action-pinner@v1
   with:
     mode: scan
-    config: .pin-actions.json
+    config: .action-pinner.json
 ```
 
 Use `enforce` to gate workflow changes in CI:
@@ -172,14 +172,14 @@ on:
     branches: [main]
 
 jobs:
-  pin-actions:
+  action-pinner:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: jongalloway/pin-actions@v1
+      - uses: jongalloway/action-pinner@v1
         with:
           mode: enforce
-          config: .pin-actions.json
+          config: .action-pinner.json
 ```
 
 Action inputs:
@@ -192,29 +192,29 @@ Action inputs:
 
 ## Pre-commit
 
-Use `pin-actions` as a [pre-commit](https://pre-commit.com/) hook to scan workflow changes before they land:
+Use `action-pinner` as a [pre-commit](https://pre-commit.com/) hook to scan workflow changes before they land:
 
 ```yaml
 # .pre-commit-config.yaml
 repos:
-  - repo: https://github.com/jongalloway/pin-actions
+  - repo: https://github.com/jongalloway/action-pinner
     rev: v0.1.0
     hooks:
-      - id: pin-actions-scan
+      - id: action-pinner-scan
 ```
 
 Available hooks:
 
-- `pin-actions-scan`: runs `pin-actions scan` against `.github/workflows` and fails if unpinned refs are found.
-- `pin-actions-fix`: runs `pin-actions fix` against `.github/workflows` to auto-pin refs before commit.
+- `action-pinner-scan`: runs `action-pinner scan` against `.github/workflows` and fails if unpinned refs are found.
+- `action-pinner-fix`: runs `action-pinner fix` against `.github/workflows` to auto-pin refs before commit.
 
 ## Configuration
 
-Example `.pin-actions.json`:
+Example `.action-pinner.json`:
 
 ```json
 {
-  "$schema": "./schemas/pin-actions.schema.json",
+  "$schema": "./schemas/action-pinner.schema.json",
   "mode": "scan",
   "include": [
     ".github/workflows/**/*.yml",
@@ -260,7 +260,7 @@ Example `.pin-actions.json`:
   },
   "pr": {
     "create": true,
-    "branchPrefix": "chore/pin-actions",
+    "branchPrefix": "chore/action-pinner",
     "title": "Pin GitHub Actions to commit SHAs",
     "labels": [
       "security",
@@ -305,9 +305,9 @@ Authentication precedence:
 Examples:
 
 ```bash
-pin-actions scan --token ghp_xxx
-pin-actions scan --use-netrc
-pin-actions scan --github-api-url https://enterprise.example.com/api/v3
+action-pinner scan --token ghp_xxx
+action-pinner scan --use-netrc
+action-pinner scan --github-api-url https://enterprise.example.com/api/v3
 ```
 
 For GitHub Enterprise Server, set `--github-api-url` or `githubApiUrl` in config. See [docs/ENTERPRISE.md](./docs/ENTERPRISE.md).
@@ -317,19 +317,19 @@ For GitHub Enterprise Server, set `--github-api-url` or `githubApiUrl` in config
 Scan explicit repositories:
 
 ```bash
-pin-actions scan --repo octo-org/service-a octo-org/service-b
+action-pinner scan --repo octo-org/service-a octo-org/service-b
 ```
 
 Discover repositories from an organization, then narrow the set:
 
 ```bash
-pin-actions scan --github-org octo-org --include-repo "platform-*" --exclude-repo "*-archive"
+action-pinner scan --github-org octo-org --include-repo "platform-*" --exclude-repo "*-archive"
 ```
 
 Target a subset of workflow files across selected repos:
 
 ```bash
-pin-actions scan --github-org octo-org --path ".github/workflows/**" --exclude-path "**/legacy/**"
+action-pinner scan --github-org octo-org --path ".github/workflows/**" --exclude-path "**/legacy/**"
 ```
 
 For user-owned repositories, pass explicit `--repo owner/repo` values.
@@ -339,13 +339,13 @@ For user-owned repositories, pass explicit `--repo owner/repo` values.
 Allowlist broad cases:
 
 ```bash
-pin-actions enforce --allow-action "actions/*"
+action-pinner enforce --allow-action "actions/*"
 ```
 
 Add a narrow CLI exception:
 
 ```bash
-pin-actions enforce --exception "actions/upload-artifact@v3::**/legacy.yml"
+action-pinner enforce --exception "actions/upload-artifact@v3::**/legacy.yml"
 ```
 
 Config-driven exceptions are better for review history:
@@ -384,7 +384,7 @@ See [SECURITY.md](./SECURITY.md) for the security policy and [docs/ENTERPRISE.md
 
 ## Acknowledgments
 
-This project was inspired by [mheap/pin-github-action](https://github.com/mheap/pin-github-action), which pioneered the idea of pinning GitHub Actions to commit SHAs. `pin-actions` is a completely new implementation built from scratch using modern Node.js and the GitHub REST API, designed to address long-standing community requests including:
+This project was inspired by [mheap/pin-github-action](https://github.com/mheap/pin-github-action), which pioneered the idea of pinning GitHub Actions to commit SHAs. `action-pinner` is a completely new implementation built from scratch using modern Node.js and the GitHub REST API, designed to address long-standing community requests including:
 
 - [Enterprise GitHub support](https://github.com/mheap/pin-github-action/issues/169)
 - [Support netrc auth](https://github.com/mheap/pin-github-action/issues/168)
@@ -403,4 +403,4 @@ npm run lint
 npm run build
 ```
 
-Open an issue or PR at [github.com/jongalloway/pin-actions/issues](https://github.com/jongalloway/pin-actions/issues).
+Open an issue or PR at [github.com/jongalloway/action-pinner/issues](https://github.com/jongalloway/action-pinner/issues).

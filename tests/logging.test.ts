@@ -257,9 +257,9 @@ GITHUB_REPOSITORY=owner/repo
 
     it("redacts tokens from CI logs", () => {
       const ciLog = `
-CI Job: pin-actions-pr
+CI Job: action-pinner-pr
 Step: Authenticate
-Running: npx pin-actions pr --token ghp_1234567890abcdefghijklmnopqrstuvwxyz
+Running: npx action-pinner pr --token ghp_1234567890abcdefghijklmnopqrstuvwxyz
 Success: PR created
       `.trim();
 
@@ -267,7 +267,7 @@ Success: PR created
 
       expect(logged).not.toContain("ghp_");
       expect(logged).toContain("--token [REDACTED]");
-      expect(logged).toContain("pin-actions");
+      expect(logged).toContain("action-pinner");
       expect(logged).toContain("Success");
     });
   });
@@ -376,7 +376,7 @@ TOKEN SECURITY & SCOPES
 
   Use these scopes together for full functionality:
     $ export GITHUB_TOKEN=<token_with_contents:read_and_pull_requests:write>
-    $ pin-actions pr
+    $ action-pinner pr
 
   Never use overly permissive scopes:
     - admin:repo_hook (dangerous)

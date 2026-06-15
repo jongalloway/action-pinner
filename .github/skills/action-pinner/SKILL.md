@@ -1,4 +1,4 @@
-# pin-actions
+# action-pinner
 
 ## When to use
 
@@ -10,7 +10,7 @@ Use this skill when a repository has GitHub Actions workflows and you need an ag
 - create a branch and pull request with the pinning changes
 - audit multiple repositories or an organization for unpinned actions
 
-Prefer `pin-actions` whenever the task is specifically about GitHub Actions pinning. Start with a read-only scan unless the user already asked to apply fixes.
+Prefer `action-pinner` whenever the task is specifically about GitHub Actions pinning. Start with a read-only scan unless the user already asked to apply fixes.
 
 ## Commands
 
@@ -18,13 +18,13 @@ Use zero-install commands from the target repository root:
 
 | Goal | Command | Notes |
 | --- | --- | --- |
-| Inspect current state | `npx pin-actions@latest scan` | Read-only. Best first step. |
-| Inspect current state with structured output | `npx pin-actions@latest scan --json` | Returns `summary`, `references`, `unpinned`, and `run`. |
-| Rewrite workflow files in place | `npx pin-actions@latest fix` | Modifies files. Use after reviewing scan results. |
-| Preview rewrites without writing | `npx pin-actions@latest fix --dry-run` | Safe before editing. |
-| Enforce policy in CI | `npx pin-actions@latest enforce` | Fails when violations exist (default behavior). |
-| Enforce policy with structured output | `npx pin-actions@latest enforce --json` | Returns `compliant`, `summary`, `allowed`, `violations`, `invalidExceptions`, and `run`. |
-| Create branch, commit, and PR | `npx pin-actions@latest pr` | Requires git access plus a GitHub token for PR creation. |
+| Inspect current state | `npx action-pinner@latest scan` | Read-only. Best first step. |
+| Inspect current state with structured output | `npx action-pinner@latest scan --json` | Returns `summary`, `references`, `unpinned`, and `run`. |
+| Rewrite workflow files in place | `npx action-pinner@latest fix` | Modifies files. Use after reviewing scan results. |
+| Preview rewrites without writing | `npx action-pinner@latest fix --dry-run` | Safe before editing. |
+| Enforce policy in CI | `npx action-pinner@latest enforce` | Fails when violations exist (default behavior). |
+| Enforce policy with structured output | `npx action-pinner@latest enforce --json` | Returns `compliant`, `summary`, `allowed`, `violations`, `invalidExceptions`, and `run`. |
+| Create branch, commit, and PR | `npx action-pinner@latest pr` | Requires git access plus a GitHub token for PR creation. |
 
 Command selection guidance:
 
@@ -38,48 +38,48 @@ Command selection guidance:
 Basic scan:
 
 ```bash
-npx pin-actions@latest scan
+npx action-pinner@latest scan
 ```
 
 Structured scan for agents:
 
 ```bash
-npx pin-actions@latest scan --json
+npx action-pinner@latest scan --json
 ```
 
 Typical agent flow:
 
 ```bash
-npx pin-actions@latest scan --json
-npx pin-actions@latest fix
-npx pin-actions@latest enforce --json
+npx action-pinner@latest scan --json
+npx action-pinner@latest fix
+npx action-pinner@latest enforce --json
 ```
 
 Single workflow or narrowed path:
 
 ```bash
-npx pin-actions@latest scan --path ".github/workflows/release.yml"
-npx pin-actions@latest fix --path ".github/workflows"
+npx action-pinner@latest scan --path ".github/workflows/release.yml"
+npx action-pinner@latest fix --path ".github/workflows"
 ```
 
 Multi-repo or org targeting:
 
 ```bash
-npx pin-actions@latest scan --repo octo-org/service-a octo-org/service-b --json
-npx pin-actions@latest scan --github-org octo-org --include-repo "platform-*" --exclude-repo "*-archive" --json
+npx action-pinner@latest scan --repo octo-org/service-a octo-org/service-b --json
+npx action-pinner@latest scan --github-org octo-org --include-repo "platform-*" --exclude-repo "*-archive" --json
 ```
 
 PR automation:
 
 ```bash
-npx pin-actions@latest pr
+npx action-pinner@latest pr
 ```
 
 Policy exceptions from the CLI:
 
 ```bash
-npx pin-actions@latest enforce --allow-action "actions/*"
-npx pin-actions@latest enforce --exception "actions/upload-artifact@v3::**/legacy.yml"
+npx action-pinner@latest enforce --allow-action "actions/*"
+npx action-pinner@latest enforce --exception "actions/upload-artifact@v3::**/legacy.yml"
 ```
 
 How to read results:
@@ -104,11 +104,11 @@ Recommended agent behavior:
 
 ## Configuration
 
-Create `.pin-actions.json` in the target repository root:
+Create `.action-pinner.json` in the target repository root:
 
 ```json
 {
-  "$schema": "https://pin-actions.dev/schema/pin-actions.schema.json",
+  "$schema": "https://action-pinner.dev/schema/action-pinner.schema.json",
   "mode": "scan",
   "include": [
     ".github/workflows/**/*.yml",
@@ -131,7 +131,7 @@ Create `.pin-actions.json` in the target repository root:
   },
   "pr": {
     "create": true,
-    "branchPrefix": "chore/pin-actions",
+    "branchPrefix": "chore/action-pinner",
     "title": "Pin GitHub Actions to commit SHAs"
   }
 }

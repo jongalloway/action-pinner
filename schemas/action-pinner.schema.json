@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://pin-actions.dev/schema/pin-actions.schema.json",
-  "title": "pin-actions configuration",
+  "$id": "https://action-pinner.dev/schema/action-pinner.schema.json",
+  "title": "action-pinner configuration",
   "type": "object",
   "additionalProperties": false,
   "properties": {

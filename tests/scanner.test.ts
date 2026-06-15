@@ -12,7 +12,7 @@ afterEach(async () => {
 
 describe("scanWorkflows", () => {
   it("detects unpinned actions", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");
@@ -42,7 +42,7 @@ describe("scanWorkflows", () => {
   });
 
   it("defaults to .github/workflows when no patterns are provided", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");
@@ -77,7 +77,7 @@ describe("scanWorkflows", () => {
   });
 
   it("scans multi-repo paths with deterministic ordering", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const repoBWorkflowDir = join(root, "repos", "repo-b", ".github", "workflows");
@@ -120,7 +120,7 @@ describe("scanWorkflows", () => {
   });
 
   it("applies include/exclude filters deterministically across edge-case ordering", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");
@@ -165,7 +165,7 @@ describe("scanWorkflows", () => {
   });
 
   it("normalizes Windows-style workflow globs", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");
@@ -188,7 +188,7 @@ describe("scanWorkflows", () => {
   });
 
   it("expands workflow directories", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");
@@ -211,7 +211,7 @@ describe("scanWorkflows", () => {
   });
 
   it("supports path and action filters", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");
@@ -253,7 +253,7 @@ describe("scanWorkflows", () => {
   });
 
   it("applies include/exclude action filters deterministically", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");

@@ -1,12 +1,12 @@
-# Contributing to pin-actions
+# Contributing to action-pinner
 
 Thanks for your interest in contributing! Here's how to get started.
 
 ## Development Setup
 
 ```bash
-git clone https://github.com/jongalloway/pin-actions.git
-cd pin-actions
+git clone https://github.com/jongalloway/action-pinner.git
+cd action-pinner
 npm install
 npm run build
 ```
@@ -33,7 +33,7 @@ npm test        # Run tests (Vitest)
 
 ## Reporting Issues
 
-Open an issue at [github.com/jongalloway/pin-actions/issues](https://github.com/jongalloway/pin-actions/issues). Include:
+Open an issue at [github.com/jongalloway/action-pinner/issues](https://github.com/jongalloway/action-pinner/issues). Include:
 
 - What you expected vs. what happened
 - Steps to reproduce

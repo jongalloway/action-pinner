@@ -83,7 +83,7 @@ function makeConfig(overrides: Partial<PinActionsConfig> = {}): PinActionsConfig
     },
     pr: {
       create: true,
-      branchPrefix: "chore/pin-actions",
+      branchPrefix: "chore/action-pinner",
       title: "Pin GitHub Actions to commit SHAs",
       labels: [],
       reviewers: [],

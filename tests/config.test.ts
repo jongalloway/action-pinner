@@ -12,10 +12,10 @@ afterEach(async () => {
 
 describe("loadConfig", () => {
   it("loads valid config values", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
-    const configPath = join(root, ".pin-actions.json");
+    const configPath = join(root, ".action-pinner.json");
     await writeFile(
       configPath,
       JSON.stringify(
@@ -34,7 +34,7 @@ describe("loadConfig", () => {
           excludeActions: ["actions/cache"],
           pr: {
             create: false,
-            branchPrefix: "chore/pin-actions",
+            branchPrefix: "chore/action-pinner",
             title: "Pin",
             labels: ["security"],
             reviewers: ["octocat"],
@@ -88,10 +88,10 @@ describe("loadConfig", () => {
   });
 
   it("defaults commentFormat to {ref}", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
-    const configPath = join(root, ".pin-actions.json");
+    const configPath = join(root, ".action-pinner.json");
     await writeFile(configPath, JSON.stringify({}), "utf8");
 
     const config = await loadConfig(configPath);
@@ -99,10 +99,10 @@ describe("loadConfig", () => {
   });
 
   it("fails on invalid top-level keys", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
-    const configPath = join(root, ".pin-actions.json");
+    const configPath = join(root, ".action-pinner.json");
     await writeFile(configPath, JSON.stringify({ invalid: true }), "utf8");
 
     await expect(loadConfig(configPath)).rejects.toThrow(
@@ -111,20 +111,20 @@ describe("loadConfig", () => {
   });
 
   it("fails on invalid JSON", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
-    const configPath = join(root, ".pin-actions.json");
+    const configPath = join(root, ".action-pinner.json");
     await writeFile(configPath, "{", "utf8");
 
     await expect(loadConfig(configPath)).rejects.toThrow("Invalid JSON");
   });
 
   it("fails on malformed enforcement exceptions", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
-    const configPath = join(root, ".pin-actions.json");
+    const configPath = join(root, ".action-pinner.json");
     await writeFile(
       configPath,
       JSON.stringify({
@@ -141,10 +141,10 @@ describe("loadConfig", () => {
   });
 
   it("fails with clear message for invalid include type", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
-    const configPath = join(root, ".pin-actions.json");
+    const configPath = join(root, ".action-pinner.json");
     await writeFile(configPath, JSON.stringify({ include: "not-an-array" }), "utf8");
 
     await expect(loadConfig(configPath)).rejects.toThrow(
@@ -153,10 +153,10 @@ describe("loadConfig", () => {
   });
 
   it("fails with clear message for invalid enforcement type", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
-    const configPath = join(root, ".pin-actions.json");
+    const configPath = join(root, ".action-pinner.json");
     await writeFile(
       configPath,
       JSON.stringify({ enforcement: { failOnUnpinned: "yes" } }),
@@ -169,10 +169,10 @@ describe("loadConfig", () => {
   });
 
   it("fails with clear message for unsupported enforcement allowlist keys", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
-    const configPath = join(root, ".pin-actions.json");
+    const configPath = join(root, ".action-pinner.json");
     await writeFile(
       configPath,
       JSON.stringify({ enforcement: { enabled: true, allowlist: ["actions/checkout"] } }),
@@ -185,10 +185,10 @@ describe("loadConfig", () => {
   });
 
   it("fails with clear message for invalid dependabot commentFormat type", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
-    const configPath = join(root, ".pin-actions.json");
+    const configPath = join(root, ".action-pinner.json");
     await writeFile(
       configPath,
       JSON.stringify({ dependabot: { commentFormat: true } }),
@@ -201,10 +201,10 @@ describe("loadConfig", () => {
   });
 
   it("fails on invalid org type", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
-    const configPath = join(root, ".pin-actions.json");
+    const configPath = join(root, ".action-pinner.json");
     await writeFile(configPath, JSON.stringify({ org: { type: "team" } }), "utf8");
 
     await expect(loadConfig(configPath)).rejects.toThrow(

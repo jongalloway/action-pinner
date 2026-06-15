@@ -1,17 +1,17 @@
-- id: pin-actions-scan
-  name: pin-actions scan
+- id: action-pinner-scan
+  name: action-pinner scan
   description: Fail when workflows contain unpinned GitHub Actions refs.
-  entry: pin-actions scan --path
+  entry: action-pinner scan --path
   language: node
   additional_dependencies: []
   files: \.github/workflows/
   types: [yaml]
   pass_filenames: true
 
-- id: pin-actions-fix
-  name: pin-actions fix
+- id: action-pinner-fix
+  name: action-pinner fix
   description: Pin GitHub Actions refs in workflow files.
-  entry: pin-actions fix --path
+  entry: action-pinner fix --path
   language: node
   additional_dependencies: []
   files: \.github/workflows/

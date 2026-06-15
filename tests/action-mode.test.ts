@@ -29,7 +29,7 @@ afterEach(async () => {
 
 describe("runActionMode", () => {
   it("writes enforcement outputs for GitHub Actions", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");
@@ -48,7 +48,7 @@ describe("runActionMode", () => {
     );
 
     const outputPath = join(root, "github-output.txt");
-    const configPath = join(root, ".pin-actions.json");
+    const configPath = join(root, ".action-pinner.json");
     await writeFile(configPath, JSON.stringify({}, null, 2), "utf8");
     process.env.INPUT_MODE = "enforce";
     process.env.INPUT_CONFIG = configPath;

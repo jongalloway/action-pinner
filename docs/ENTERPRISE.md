@@ -3,8 +3,8 @@
 ## Checklist for GHES Deployments
 
 - [ ] Configure GHES API endpoint via environment variable or config file
-- [ ] Create a scoped GitHub App or PAT for pin-actions
-- [ ] Test connectivity to GHES instance: `pin-actions scan --github-api-url <GHES_URL> --token <TEST_TOKEN>`
+- [ ] Create a scoped GitHub App or PAT for action-pinner
+- [ ] Test connectivity to GHES instance: `action-pinner scan --github-api-url <GHES_URL> --token <TEST_TOKEN>`
 - [ ] Set up repository-level or org-level policies requiring PR reviews
 - [ ] Configure branch protection on `.github/workflows/` to require approval
 - [ ] Review and test PR evidence before merging
@@ -26,23 +26,23 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: '20'
-      - name: Install pin-actions
-        run: npm install -g pin-actions
-      - name: Run pin-actions
+      - name: Install action-pinner
+        run: npm install -g action-pinner
+      - name: Run action-pinner
         env:
           PIN_ACTIONS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_API_URL: ${{ secrets.GHES_API_URL }}  # if using GHES
-        run: pin-actions pr --open --fail-on-ambiguous
+        run: action-pinner pr --open --fail-on-ambiguous
 ```
 
 ### GitLab CI
 
 ```yaml
-pin-actions:
+action-pinner:
   image: node:20
   script:
-    - npm install -g pin-actions
-    - pin-actions scan --github-api-url $GITHUB_ENTERPRISE_URL
+    - npm install -g action-pinner
+    - action-pinner scan --github-api-url $GITHUB_ENTERPRISE_URL
 ```
 
 ## Multi-Repo Organization Scanning
@@ -51,10 +51,10 @@ For org-level deployments:
 
 ```bash
 # Discover target scope for org scanning (requires read permissions)
-pin-actions scan --github-org acme-corp --include-repo "platform-*" --exclude-repo "*-archive" --token $ORG_TOKEN
+action-pinner scan --github-org acme-corp --include-repo "platform-*" --exclude-repo "*-archive" --token $ORG_TOKEN
 
 # Explicit repo targeting
-pin-actions scan --repo acme-corp/service-a acme-corp/service-b --token $ORG_TOKEN
+action-pinner scan --repo acme-corp/service-a acme-corp/service-b --token $ORG_TOKEN
 ```
 
 `scan` now executes per selected repository and emits deterministic per-repo plus aggregate results.
@@ -63,10 +63,10 @@ pin-actions scan --repo acme-corp/service-a acme-corp/service-b --token $ORG_TOK
 
 ```yaml
 - name: Enforce pinned actions
-  run: pin-actions enforce
+  run: action-pinner enforce
 ```
 
-Prefer config-driven policy in `.pin-actions.json` for auditability:
+Prefer config-driven policy in `.action-pinner.json` for auditability:
 
 - `enforcement.allowActions`: explicit allowlist entries (`owner/repo` or `owner/*`) that always pass
 - `enforcement.exceptions`: explicit exception objects (`action`, optional `ref`, `workflow`, `justification`, `expiresAt`)
@@ -107,7 +107,7 @@ Expired or malformed exceptions fail closed and are surfaced as non-compliant en
 
 1. **Use scoped tokens:** Limit token permissions to `contents:read` or `pull_requests:write`
 2. **Rotate tokens:** Implement quarterly token rotation
-3. **Review PRs:** Always review pin-actions PRs before merging
+3. **Review PRs:** Always review action-pinner PRs before merging
 4. **Enable branch protection:** Require approval on `.github/workflows/` changes
-5. **Audit logs:** Enable GitHub audit logs for all pin-actions operations
-6. **No tokens in config:** Never commit tokens to `.pin-actions.json` or config files
+5. **Audit logs:** Enable GitHub audit logs for all action-pinner operations
+6. **No tokens in config:** Never commit tokens to `.action-pinner.json` or config files

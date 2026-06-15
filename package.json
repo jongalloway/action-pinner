@@ -1,5 +1,5 @@
 {
-  "name": "pin-actions",
+  "name": "action-pinner",
   "version": "0.1.0",
   "description": "Modern, maintained utility for pinning GitHub Actions to commit SHAs.",
   "type": "module",
@@ -8,10 +8,10 @@
     "dist/",
     "README.md",
     "LICENSE",
-    ".github/action.yml"
+    "action.yml"
   ],
   "bin": {
-    "pin-actions": "dist/src/index.js"
+    "action-pinner": "dist/src/index.js"
   },
   "publishConfig": {
     "access": "public",
@@ -38,11 +38,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jongalloway/pin-actions.git"
+    "url": "https://github.com/jongalloway/action-pinner.git"
   },
-  "homepage": "https://github.com/jongalloway/pin-actions#readme",
+  "homepage": "https://github.com/jongalloway/action-pinner#readme",
   "bugs": {
-    "url": "https://github.com/jongalloway/pin-actions/issues"
+    "url": "https://github.com/jongalloway/action-pinner/issues"
   },
   "dependencies": {
     "@octokit/rest": "^22.0.0",

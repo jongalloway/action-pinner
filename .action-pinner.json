@@ -1,5 +1,5 @@
 {
-  "$schema": "./schemas/pin-actions.schema.json",
+  "$schema": "./schemas/action-pinner.schema.json",
   "mode": "scan",
   "include": [".github/workflows/**/*.yml", ".github/workflows/**/*.yaml"],
   "exclude": [],
@@ -13,7 +13,7 @@
   },
   "pr": {
     "create": true,
-    "branchPrefix": "chore/pin-actions",
+    "branchPrefix": "chore/action-pinner",
     "title": "Pin GitHub Actions to commit SHAs",
     "labels": ["security", "dependencies"]
   },

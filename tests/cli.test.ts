@@ -15,7 +15,7 @@ afterEach(async () => {
 
 describe("runCli", () => {
   it("prints a dry-run diff preview without changing files", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");
@@ -61,7 +61,7 @@ describe("runCli", () => {
   });
 
   it("applies --comment-format to fix dry runs", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");
@@ -107,7 +107,7 @@ describe("runCli", () => {
   });
 
   it("enforce exits non-zero by default when unpinned refs are found", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");
@@ -131,7 +131,7 @@ describe("runCli", () => {
   });
 
   it("enforce honors failOnUnpinned=false exception from config", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");
@@ -148,7 +148,7 @@ describe("runCli", () => {
       "utf8"
     );
 
-    const configPath = join(root, ".pin-actions.json");
+    const configPath = join(root, ".action-pinner.json");
     await writeFile(
       configPath,
       JSON.stringify({ enforcement: { failOnUnpinned: false } }, null, 2),
@@ -161,7 +161,7 @@ describe("runCli", () => {
   });
 
   it("enforce allows CLI path allowlist to override broader config include", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");
@@ -189,7 +189,7 @@ describe("runCli", () => {
       "utf8"
     );
 
-    const configPath = join(root, ".pin-actions.json");
+    const configPath = join(root, ".action-pinner.json");
     await writeFile(
       configPath,
       JSON.stringify({ include: [join(workflowDir, "*.yml")] }, null, 2),
@@ -202,7 +202,7 @@ describe("runCli", () => {
   });
 
   it("enforce reports allowlisted refs as allowed in JSON output", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");
@@ -243,7 +243,7 @@ describe("runCli", () => {
   });
 
   it("enforce fails closed on expired exceptions with clear messaging", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");
@@ -260,7 +260,7 @@ describe("runCli", () => {
       "utf8"
     );
 
-    const configPath = join(root, ".pin-actions.json");
+    const configPath = join(root, ".action-pinner.json");
     await writeFile(
       configPath,
       JSON.stringify(

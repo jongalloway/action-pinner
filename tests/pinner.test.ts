@@ -14,7 +14,7 @@ afterEach(async () => {
 
 describe("pinReferences", () => {
   it("resolves each unique ref once and skips non-resolvable refs", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");
@@ -88,7 +88,7 @@ describe("pinReferences", () => {
   });
 
   it("renders configurable comment templates with supported tokens", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");
@@ -133,7 +133,7 @@ describe("pinReferences", () => {
   });
 
   it("suppresses version comments when disabled or formatted as empty", async () => {
-    const root = await mkdtemp(join(tmpdir(), "pin-actions-"));
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
     tempDirs.push(root);
 
     const workflowDir = join(root, ".github", "workflows");
@@ -247,7 +247,7 @@ function makeConfig(overrides: Partial<PinActionsConfig> = {}): PinActionsConfig
     },
     pr: {
       create: false,
-      branchPrefix: "chore/pin-actions",
+      branchPrefix: "chore/action-pinner",
       title: "Pin actions",
       labels: [],
       reviewers: [],

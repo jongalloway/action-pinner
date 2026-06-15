@@ -532,7 +532,7 @@ jobs:
 });
 
 async function createTempDir(): Promise<string> {
-  const dir = join(tmpdir(), `pin-actions-${Math.random().toString(36).substring(7)}`);
+  const dir = join(tmpdir(), `action-pinner-${Math.random().toString(36).substring(7)}`);
   tempDirs.push(dir);
   return dir;
 }
@@ -572,7 +572,7 @@ function createDefaultConfig(): PinActionsConfig {
     },
     pr: {
       create: false,
-      branchPrefix: "pin-actions",
+      branchPrefix: "action-pinner",
       title: "Pin Actions",
       labels: [],
       reviewers: [],

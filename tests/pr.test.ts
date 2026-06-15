@@ -40,7 +40,7 @@ describe("pr helpers", () => {
         "Branch: {{branch}}"
       ].join("\n"),
       {
-        branch: "chore/pin-actions-123",
+        branch: "chore/action-pinner-123",
         baseBranch: "main",
         commitMessage: "chore: pin GitHub Actions to commit SHAs"
       }
@@ -49,7 +49,7 @@ describe("pr helpers", () => {
     expect(body).toContain("Pinned 1 action reference(s) across 1 file(s).");
     expect(body).toContain("Files: 1");
     expect(body).toContain("Refs: 1");
-    expect(body).toContain("Branch: chore/pin-actions-123");
+    expect(body).toContain("Branch: chore/action-pinner-123");
   });
 
   it("creates a pull request with optional metadata", async () => {
@@ -61,7 +61,7 @@ describe("pr helpers", () => {
     const client = {
       pulls: {
         create: vi.fn().mockResolvedValue({
-          data: { number: 42, html_url: "https://github.com/acme/pin-actions/pull/42" }
+          data: { number: 42, html_url: "https://github.com/acme/action-pinner/pull/42" }
         }),
         requestReviewers: vi.fn().mockResolvedValue(undefined)
       },
@@ -74,28 +74,28 @@ describe("pr helpers", () => {
     const result = await publishPullRequest({
       config: makeConfig(),
       patches: makePatches(),
-      branch: "chore/pin-actions-123",
+      branch: "chore/action-pinner-123",
       baseBranch: "main",
       token: "token",
       git,
       client,
       repository: {
         owner: "acme",
-        repo: "pin-actions"
+        repo: "action-pinner"
       }
     });
 
     expect(result).toEqual({
       number: 42,
-      htmlUrl: "https://github.com/acme/pin-actions/pull/42"
+      htmlUrl: "https://github.com/acme/action-pinner/pull/42"
     });
-    expect(git.raw).toHaveBeenCalledWith(["push", "-u", "origin", "chore/pin-actions-123"]);
+    expect(git.raw).toHaveBeenCalledWith(["push", "-u", "origin", "chore/action-pinner-123"]);
     expect(client.pulls.create).toHaveBeenCalledWith(
       expect.objectContaining({
         owner: "acme",
-        repo: "pin-actions",
+        repo: "action-pinner",
         title: "Pin GitHub Actions to commit SHAs",
-        head: "chore/pin-actions-123",
+        head: "chore/action-pinner-123",
         base: "main"
       })
     );
@@ -104,19 +104,19 @@ describe("pr helpers", () => {
     expect(pullCreateBody).toContain("Run fingerprint");
     expect(client.issues.addLabels).toHaveBeenCalledWith({
       owner: "acme",
-      repo: "pin-actions",
+      repo: "action-pinner",
       issue_number: 42,
       labels: ["security", "dependencies"]
     });
     expect(client.issues.addAssignees).toHaveBeenCalledWith({
       owner: "acme",
-      repo: "pin-actions",
+      repo: "action-pinner",
       issue_number: 42,
       assignees: ["octocat"]
     });
     expect(client.pulls.requestReviewers).toHaveBeenCalledWith({
       owner: "acme",
-      repo: "pin-actions",
+      repo: "action-pinner",
       pull_number: 42,
       reviewers: ["hubot"]
     });
@@ -138,7 +138,7 @@ function makeConfig(): PinActionsConfig {
     },
     pr: {
       create: true,
-      branchPrefix: "chore/pin-actions",
+      branchPrefix: "chore/action-pinner",
       title: "Pin GitHub Actions to commit SHAs",
       labels: ["security", "dependencies"],
       reviewers: ["hubot"],

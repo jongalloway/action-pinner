@@ -134,7 +134,7 @@ action-pinner dependabot-snippet --check
 Flags:
 
 - `--path <path...>`: workflow file, directory, or glob to scan
-- `--check`: compare the generated snippet against `.github/dependabot.yml`
+- `--check`: compare the generated snippet against `.github/dependabot.yml` or `.github/dependabot.yaml`
 
 ## GitHub Action Usage
 

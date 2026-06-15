@@ -529,7 +529,7 @@ See docs/ENTERPRISE.md for enterprise deployments.
   program
     .command("dependabot-snippet")
     .option("-p, --path <path...>", "Workflow file, directory, or glob to scan")
-    .option("--check", "Compare the generated snippet against .github/dependabot.yml", false)
+    .option("--check", "Compare the generated snippet against .github/dependabot.yml or .github/dependabot.yaml", false)
     .action(async (opts) => {
       console.log(
         await generateDependabotActionsSnippet({

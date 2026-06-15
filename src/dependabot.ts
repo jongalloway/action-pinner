@@ -107,7 +107,7 @@ async function buildCheckComments(
 
   if (!existing) {
     return [
-      "# No existing .github/dependabot.yml was found.",
+      "# No existing .github/dependabot.yml or .github/dependabot.yaml was found.",
       "# Add the snippet below to enable Dependabot updates for GitHub Actions."
     ];
   }
@@ -142,7 +142,12 @@ async function loadExistingDependabotConfig(cwd: string): Promise<{
     }
 
     const content = await readFile(filePath, "utf8");
-    const parsed = parse(content) as { updates?: unknown } | null;
+    let parsed: { updates?: unknown } | null;
+    try {
+      parsed = parse(content) as { updates?: unknown } | null;
+    } catch {
+      return null;
+    }
     const updates = Array.isArray(parsed?.updates) ? parsed.updates : [];
     const githubActionDirectories = new Set<string>();
 

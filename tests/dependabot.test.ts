@@ -157,4 +157,35 @@ describe("generateDependabotActionsSnippet", () => {
       ].join("\n")
     );
   });
+
+  it("treats a malformed dependabot.yml as unreadable and generates a full snippet", async () => {
+    const root = await mkdtemp(join(tmpdir(), "action-pinner-"));
+    tempDirs.push(root);
+
+    const workflowDir = join(root, ".github", "workflows");
+    await mkdir(workflowDir, { recursive: true });
+    await writeFile(
+      join(workflowDir, "ci.yml"),
+      [
+        "jobs:",
+        "  build:",
+        "    steps:",
+        "      - uses: actions/checkout@v4"
+      ].join("\n"),
+      "utf8"
+    );
+
+    const githubDir = join(root, ".github");
+    await mkdir(githubDir, { recursive: true });
+    await writeFile(join(githubDir, "dependabot.yml"), ": invalid: yaml: [", "utf8");
+
+    const snippet = await generateDependabotActionsSnippet({
+      cwd: root,
+      check: true
+    });
+
+    expect(snippet).toContain("version: 2");
+    expect(snippet).toContain("  - package-ecosystem: github-actions");
+    expect(snippet).toContain("    directory: /.github/workflows");
+  });
 });

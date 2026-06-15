@@ -112,6 +112,13 @@ async function buildCheckComments(
     ];
   }
 
+  if ("unreadable" in existing) {
+    return [
+      `# ${existing.displayPath} could not be parsed (malformed YAML); treating it as unreadable.`,
+      "# Fix or replace it with the snippet below."
+    ];
+  }
+
   const missingDirectories = [...requiredDirectories]
     .filter((directory) => !existing.githubActionDirectories.has(directory))
     .sort((left, right) => left.localeCompare(right));
@@ -131,7 +138,7 @@ async function buildCheckComments(
 async function loadExistingDependabotConfig(cwd: string): Promise<{
   displayPath: string;
   githubActionDirectories: Set<string>;
-} | null> {
+} | { displayPath: string; unreadable: true } | null> {
   for (const candidate of DEPENDABOT_CONFIG_PATHS) {
     const filePath = join(cwd, candidate);
 
@@ -146,7 +153,7 @@ async function loadExistingDependabotConfig(cwd: string): Promise<{
     try {
       parsed = parse(content) as { updates?: unknown } | null;
     } catch {
-      return null;
+      return { displayPath: candidate, unreadable: true };
     }
     const updates = Array.isArray(parsed?.updates) ? parsed.updates : [];
     const githubActionDirectories = new Set<string>();

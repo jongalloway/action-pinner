@@ -184,6 +184,7 @@ describe("generateDependabotActionsSnippet", () => {
       check: true
     });
 
+    expect(snippet).toContain("# .github/dependabot.yml could not be parsed (malformed YAML); treating it as unreadable.");
     expect(snippet).toContain("version: 2");
     expect(snippet).toContain("  - package-ecosystem: github-actions");
     expect(snippet).toContain("    directory: /.github/workflows");

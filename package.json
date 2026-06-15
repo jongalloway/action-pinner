@@ -5,7 +5,8 @@
   "type": "module",
   "main": "dist/index.js",
   "files": [
-    "dist/",
+    "dist/src/",
+    "dist/index.*",
     "README.md",
     "LICENSE",
     "action.yml"

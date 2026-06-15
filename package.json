@@ -8,7 +8,7 @@
     "dist/",
     "README.md",
     "LICENSE",
-    ".github/action.yml"
+    "action.yml"
   ],
   "bin": {
     "action-pinner": "dist/src/index.js"

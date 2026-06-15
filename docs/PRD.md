@@ -81,7 +81,7 @@ Teams need a reliable, maintained utility that can:
 - Classify each reference: already pinned SHA, tag, branch, local action, Docker image, invalid.
 - Output machine-readable and human-readable scan results.
 
-### FR2: Tag/Branch → SHA Resolver
+### FR2: Tag/Branch -> SHA Resolver
 - Resolve refs using Octokit with:
   - REST v3 endpoints (`repos.getCommit`, `git.getRef`, etc.) as primary path.
   - GraphQL v4 for efficient batched metadata where beneficial.
@@ -89,7 +89,7 @@ Teams need a reliable, maintained utility that can:
 - Cache resolutions during a run and optionally between runs.
 
 ### FR3: Auto-Pinning Engine
-- Rewrite `owner/repo@ref` → `owner/repo@<40-char-sha> # <original-ref-or-version>`.
+- Rewrite `owner/repo@ref` -> `owner/repo@<40-char-sha> # <original-ref-or-version>`.
 - Preserve YAML formatting and ordering to minimize noisy diffs.
 - Preserve comments where possible.
 - Support dry-run mode with diff preview.
@@ -195,7 +195,7 @@ flowchart LR
 
 ---
 
-## 10. Configuration (`.action-pinner.json`) – Initial Schema
+## 10. Configuration (`.action-pinner.json`) - Initial Schema
 
 ```json
 {
@@ -274,9 +274,9 @@ flowchart LR
 
 ## 15. Risks & Mitigations
 
-1. **YAML round-trip fidelity risk** → choose parser with CST/comment preservation; add golden-file tests.  
-2. **API rate limiting at org scale** → caching, batching, backoff, and concurrency controls.  
-3. **False positives/unsupported refs** → explicit classification + actionable unresolved report.  
-4. **Permission variability** → clear token scope docs; graceful fallback when PR creation is not allowed.  
+1. **YAML round-trip fidelity risk** -> choose parser with CST/comment preservation; add golden-file tests.  
+2. **API rate limiting at org scale** -> caching, batching, backoff, and concurrency controls.  
+3. **False positives/unsupported refs** -> explicit classification + actionable unresolved report.  
+4. **Permission variability** -> clear token scope docs; graceful fallback when PR creation is not allowed.  
 
 This PRD defines a complete, modern baseline for replacing `pin-github-action` with a secure, maintainable, and automation-friendly open-source tool.

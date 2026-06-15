@@ -291,9 +291,20 @@ function formatAlignedTable(headers: string[], rows: string[][]): string {
     Math.max(header.length, ...rows.map((row) => row[index]?.length ?? 0))
   );
 
-  return [headers, ...rows]
-    .map((row) => row.map((cell, index) => cell.padEnd(widths[index])).join("  ").trimEnd())
-    .join("\n");
+  const top = "\u250c" + widths.map((w) => "\u2500".repeat(w + 2)).join("\u252c") + "\u2510";
+  const separator = "\u251c" + widths.map((w) => "\u2500".repeat(w + 2)).join("\u253c") + "\u2524";
+  const bottom = "\u2514" + widths.map((w) => "\u2500".repeat(w + 2)).join("\u2534") + "\u2518";
+
+  const formatRow = (row: string[]) =>
+    "\u2502" + row.map((cell, i) => " " + cell.padEnd(widths[i]) + " ").join("\u2502") + "\u2502";
+
+  return [
+    top,
+    formatRow(headers),
+    separator,
+    ...rows.map(formatRow),
+    bottom
+  ].join("\n");
 }
 
 function buildCommitUrl(entry: PinEvidence): string {

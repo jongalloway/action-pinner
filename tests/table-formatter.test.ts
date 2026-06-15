@@ -13,7 +13,18 @@ import type { EnforcementResult, PinEvidence } from "../src/types.js";
 describe("table formatter", () => {
   it("aligns TTY table columns", () => {
     const output = formatEvidenceTable(makeEvidence());
-    const [header, firstRow, secondRow] = output.split("\n");
+    const lines = output.split("\n");
+    const headerIndex = lines.findIndex(
+      (line) =>
+        line.startsWith("│") &&
+        line.includes("Line") &&
+        line.includes("Action") &&
+        line.includes("Pinned SHA")
+    );
+    const header = lines[headerIndex];
+    const [firstRow, secondRow] = lines
+      .slice(headerIndex + 1)
+      .filter((line) => line.startsWith("│"));
 
     const lineColumn = header.indexOf("Line");
     const actionColumn = header.indexOf("Action");

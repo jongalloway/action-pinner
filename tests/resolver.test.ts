@@ -210,6 +210,47 @@ describe("ActionResolver", () => {
       ref: "tags/v1.0.0"
     });
   });
+
+  it("still throws AmbiguousRefError when annotated tag dereferencing fails", async () => {
+    const getCommit = vi
+      .fn()
+      .mockRejectedValueOnce({
+        status: 422,
+        message: "Reference is ambiguous"
+      })
+      .mockRejectedValueOnce({
+        status: 422,
+        message: "Reference is ambiguous"
+      });
+    const listMatchingRefs = vi.fn().mockImplementation(({ ref }: { ref: string }) => {
+      if (ref === "tags/v1") {
+        return Promise.resolve({
+          data: [
+            makeRef("refs/tags/v1.0.0", "2222222222222222222222222222222222222222", "tag")
+          ]
+        });
+      }
+
+      return Promise.resolve({
+        data: [makeRef("refs/heads/v1", "3333333333333333333333333333333333333333")]
+      });
+    });
+
+    const resolver = new ActionResolver(undefined, {
+      repos: { getCommit },
+      git: { listMatchingRefs }
+    });
+
+    await expect(resolver.resolve(makeReference("actions/setup-node", "v1"))).rejects.toMatchObject({
+      name: "AmbiguousRefError",
+      details: {
+        matchingShas: [
+          { sha: "2222222222222222222222222222222222222222", source: "refs/tags/v1.0.0" },
+          { sha: "3333333333333333333333333333333333333333", source: "refs/heads/v1" }
+        ]
+      }
+    });
+  });
 });
 
 function makeReference(action: string, ref: string): ActionReference {

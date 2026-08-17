@@ -258,16 +258,7 @@ export class ActionResolver {
 
     const exactBranch = branchMatches.data.find((match) => match.ref === `refs/heads/${ref}`);
     if (exactBranch) {
-      const preferredTagSha =
-        preferredTag.type === "tag"
-          ? (
-              await this.octokit.repos.getCommit({
-                owner,
-                repo,
-                ref: `tags/${preferredTag.name}`
-              })
-            ).data.sha
-          : preferredTag.sha;
+      const preferredTagSha = await this.getPreferredTagSha(owner, repo, preferredTag);
       throw new AmbiguousRefError(`${owner}/${repo}@${ref}`, [
         { sha: preferredTagSha, source: preferredTag.ref },
         { sha: exactBranch.object.sha, source: exactBranch.ref }
@@ -291,6 +282,27 @@ export class ActionResolver {
     };
     this.cache.set(cacheKey, result);
     return result;
+  }
+
+  private async getPreferredTagSha(
+    owner: string,
+    repo: string,
+    preferredTag: PreferredTag
+  ): Promise<string> {
+    if (preferredTag.type !== "tag") {
+      return preferredTag.sha;
+    }
+
+    try {
+      const commit = await this.octokit.repos.getCommit({
+        owner,
+        repo,
+        ref: `tags/${preferredTag.name}`
+      });
+      return commit.data.sha;
+    } catch {
+      return preferredTag.sha;
+    }
   }
 
   private isRetryable(error: unknown): boolean {
@@ -426,7 +438,16 @@ function selectPreferredTag(
 
   return validTags.sort((left, right) => {
     const lengthComparison = right.name.length - left.name.length;
-    return lengthComparison === 0 ? left.name.localeCompare(right.name) : lengthComparison;
+    if (lengthComparison !== 0) {
+      return lengthComparison;
+    }
+    if (left.name < right.name) {
+      return -1;
+    }
+    if (left.name > right.name) {
+      return 1;
+    }
+    return 0;
   })[0];
 }
 

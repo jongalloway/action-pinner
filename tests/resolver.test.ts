@@ -104,8 +104,7 @@ describe("ActionResolver", () => {
       .mockRejectedValueOnce({
         status: 422,
         message: "Reference is ambiguous"
-      })
-      .mockResolvedValueOnce({ data: { sha: "2222222222222222222222222222222222222222" } });
+      });
     const listMatchingRefs = vi.fn().mockImplementation(({ ref }: { ref: string }) => {
       if (ref === "tags/v1") {
         return Promise.resolve({
@@ -127,7 +126,10 @@ describe("ActionResolver", () => {
       name: "AmbiguousRefError",
       details: {
         matchingShas: [
-          { sha: "2222222222222222222222222222222222222222", source: "refs/tags/v1.0.0" },
+          {
+            sha: "2222222222222222222222222222222222222222",
+            source: "refs/tags/v1.0.0 (tag object)"
+          },
           { sha: "3333333333333333333333333333333333333333", source: "refs/heads/v1" }
         ]
       }
@@ -142,8 +144,7 @@ describe("ActionResolver", () => {
       .mockRejectedValueOnce({
         status: 422,
         message: "Reference is ambiguous"
-      })
-      .mockResolvedValueOnce({ data: { sha } });
+      });
     const listMatchingRefs = vi.fn().mockImplementation(({ ref }: { ref: string }) => {
       if (ref === "tags/v1") {
         return Promise.resolve({

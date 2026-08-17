@@ -258,7 +258,7 @@ export class ActionResolver {
     const exactBranch = branchMatches.data.find((match) => match.ref === `refs/heads/${ref}`);
     if (exactBranch) {
       throw new AmbiguousRefError(`${owner}/${repo}@${ref}`, [
-        { sha: preferredTag.sha, source: preferredTag.ref },
+        { sha: preferredTag.sha, source: `${preferredTag.ref} (tag object)` },
         { sha: exactBranch.object.sha, source: exactBranch.ref }
       ]);
     }

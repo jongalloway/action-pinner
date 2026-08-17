@@ -128,7 +128,7 @@ describe("ActionResolver", () => {
         matchingShas: [
           {
             sha: "2222222222222222222222222222222222222222",
-            source: "refs/tags/v1.0.0 (tag object)"
+            source: "refs/tags/v1.0.0"
           },
           { sha: "3333333333333333333333333333333333333333", source: "refs/heads/v1" }
         ]

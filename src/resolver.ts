@@ -21,6 +21,7 @@ export interface CommitLookupClient {
         ref: string;
         object: {
           sha: string;
+          type?: string;
         };
       }>;
     }>;
@@ -258,7 +259,7 @@ export class ActionResolver {
     const exactBranch = branchMatches.data.find((match) => match.ref === `refs/heads/${ref}`);
     if (exactBranch) {
       throw new AmbiguousRefError(`${owner}/${repo}@${ref}`, [
-        { sha: preferredTag.sha, source: `${preferredTag.ref} (tag object)` },
+        { sha: preferredTag.sha, source: formatRefSource(preferredTag) },
         { sha: exactBranch.object.sha, source: exactBranch.ref }
       ]);
     }
@@ -390,8 +391,8 @@ export { applyNetrcAuth, redactNetrcAuth } from "./netrc-auth.js";
 
 function selectPreferredTag(
   requestedRef: string,
-  matches: Array<{ ref: string; object: { sha: string } }>
-): { name: string; ref: string; sha: string } | undefined {
+  matches: Array<{ ref: string; object: { sha: string; type?: string } }>
+): PreferredTag | undefined {
   const prefix = "refs/tags/";
   const validTags = matches
     .map((match) => {
@@ -407,15 +408,27 @@ function selectPreferredTag(
       return {
         name,
         ref: match.ref,
-        sha: match.object.sha
+        sha: match.object.sha,
+        type: match.object.type
       };
     })
-    .filter((tag): tag is { name: string; ref: string; sha: string } => Boolean(tag));
+    .filter((tag): tag is PreferredTag => Boolean(tag));
 
   return validTags.sort((left, right) => {
     const lengthComparison = right.name.length - left.name.length;
     return lengthComparison === 0 ? left.name.localeCompare(right.name) : lengthComparison;
   })[0];
+}
+
+interface PreferredTag {
+  name: string;
+  ref: string;
+  sha: string;
+  type: string | undefined;
+}
+
+function formatRefSource(ref: Pick<PreferredTag, "ref" | "type">): string {
+  return ref.type === "tag" ? `${ref.ref} (tag object)` : ref.ref;
 }
 
 function isValidTagCandidate(requestedRef: string, tagName: string): boolean {

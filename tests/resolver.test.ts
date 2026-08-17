@@ -98,6 +98,39 @@ describe("ActionResolver", () => {
     });
   });
 
+  it("uses code-point order to break ties between equally long tags", async () => {
+    const getCommit = vi
+      .fn()
+      .mockRejectedValueOnce({
+        status: 422,
+        message: "Reference is ambiguous"
+      })
+      .mockResolvedValueOnce({ data: { sha: "2222222222222222222222222222222222222222" } });
+    const listMatchingRefs = vi.fn().mockImplementation(({ ref }: { ref: string }) => {
+      if (ref === "tags/v1") {
+        return Promise.resolve({
+          data: [
+            makeRef("refs/tags/v1-a", "1111111111111111111111111111111111111111"),
+            makeRef("refs/tags/v1-A", "2222222222222222222222222222222222222222")
+          ]
+        });
+      }
+
+      return Promise.resolve({ data: [] });
+    });
+
+    const resolver = new ActionResolver(undefined, {
+      repos: { getCommit },
+      git: { listMatchingRefs }
+    });
+
+    await expect(resolver.resolve(makeReference("actions/setup-node", "v1"))).resolves.toMatchObject({
+      sha: "2222222222222222222222222222222222222222",
+      comment: "v1-A",
+      resolutionMethod: "repos.getCommit (refs/tags/v1-A)"
+    });
+  });
+
   it("fails closed when an ambiguous ref also has an exact branch with a different SHA", async () => {
     const getCommit = vi
       .fn()

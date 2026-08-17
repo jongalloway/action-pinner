@@ -258,8 +258,18 @@ export class ActionResolver {
 
     const exactBranch = branchMatches.data.find((match) => match.ref === `refs/heads/${ref}`);
     if (exactBranch) {
+      const preferredTagSha =
+        preferredTag.type === "tag"
+          ? (
+              await this.octokit.repos.getCommit({
+                owner,
+                repo,
+                ref: `tags/${preferredTag.name}`
+              })
+            ).data.sha
+          : preferredTag.sha;
       throw new AmbiguousRefError(`${owner}/${repo}@${ref}`, [
-        { sha: preferredTag.sha, source: formatRefSource(preferredTag) },
+        { sha: preferredTagSha, source: preferredTag.ref },
         { sha: exactBranch.object.sha, source: exactBranch.ref }
       ]);
     }
@@ -425,10 +435,6 @@ interface PreferredTag {
   ref: string;
   sha: string;
   type: string | undefined;
-}
-
-function formatRefSource(ref: Pick<PreferredTag, "ref" | "type">): string {
-  return ref.type === "tag" ? `${ref.ref} (tag object)` : ref.ref;
 }
 
 function isValidTagCandidate(requestedRef: string, tagName: string): boolean {

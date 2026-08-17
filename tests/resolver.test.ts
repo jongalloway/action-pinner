@@ -167,6 +167,49 @@ describe("ActionResolver", () => {
     });
     expect(getCommit).toHaveBeenCalledTimes(1);
   });
+
+  it("uses dereferenced commit SHAs for annotated tag branch conflicts", async () => {
+    const getCommit = vi
+      .fn()
+      .mockRejectedValueOnce({
+        status: 422,
+        message: "Reference is ambiguous"
+      })
+      .mockResolvedValueOnce({ data: { sha: "4444444444444444444444444444444444444444" } });
+    const listMatchingRefs = vi.fn().mockImplementation(({ ref }: { ref: string }) => {
+      if (ref === "tags/v1") {
+        return Promise.resolve({
+          data: [
+            makeRef("refs/tags/v1.0.0", "2222222222222222222222222222222222222222", "tag")
+          ]
+        });
+      }
+
+      return Promise.resolve({
+        data: [makeRef("refs/heads/v1", "3333333333333333333333333333333333333333")]
+      });
+    });
+
+    const resolver = new ActionResolver(undefined, {
+      repos: { getCommit },
+      git: { listMatchingRefs }
+    });
+
+    await expect(resolver.resolve(makeReference("actions/setup-node", "v1"))).rejects.toMatchObject({
+      name: "AmbiguousRefError",
+      details: {
+        matchingShas: [
+          { sha: "4444444444444444444444444444444444444444", source: "refs/tags/v1.0.0" },
+          { sha: "3333333333333333333333333333333333333333", source: "refs/heads/v1" }
+        ]
+      }
+    });
+    expect(getCommit).toHaveBeenNthCalledWith(2, {
+      owner: "actions",
+      repo: "setup-node",
+      ref: "tags/v1.0.0"
+    });
+  });
 });
 
 function makeReference(action: string, ref: string): ActionReference {
@@ -180,9 +223,13 @@ function makeReference(action: string, ref: string): ActionReference {
   };
 }
 
-function makeRef(ref: string, sha: string): { ref: string; object: { sha: string } } {
+function makeRef(
+  ref: string,
+  sha: string,
+  type?: string
+): { ref: string; object: { sha: string; type?: string } } {
   return {
     ref,
-    object: { sha }
+    object: { sha, type }
   };
 }

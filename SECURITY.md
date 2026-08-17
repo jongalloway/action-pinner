@@ -50,9 +50,11 @@ action-pinner prioritizes **safety over convenience**:
    - Default: Exit with error code 1
    - Override: Use `--continue-on-error` to skip and log as warning
 
-2. **Ambiguous refs** (e.g., tag and branch with same name):
-   - Default: Exit with error code 1
-   - Override: Use `--fail-on-ambiguous` to re-emphasize (already strict by default)
+2. **Ambiguous refs**:
+   - Multiple matching tags: choose the longest valid tag name for the requested version prefix, using lexicographic order as a stable tie-breaker
+   - Valid tag candidates are the exact ref or tags that continue it with `.`, `-`, or `_`
+   - Branch/tag name conflicts: exit with error code 1
+   - Override: Use `--fail-on-ambiguous` to re-emphasize branch/tag conflict strictness
 
 3. **Rate limits** (GitHub API 429):
    - Automatic retry with exponential backoff

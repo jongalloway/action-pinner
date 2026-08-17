@@ -53,7 +53,7 @@ action-pinner prioritizes **safety over convenience**:
 2. **Ambiguous refs**:
    - Multiple matching tags: choose the longest valid tag name for the requested version prefix, using lexicographic order as a stable tie-breaker
    - Valid tag candidates are the exact ref or tags that continue it with `.`, `-`, or `_`
-   - Branch/tag conflicts with different SHAs: exit with error code 1
+   - Branch/tag name conflicts: exit with error code 1
    - Override: Use `--fail-on-ambiguous` to re-emphasize branch/tag conflict strictness
 
 3. **Rate limits** (GitHub API 429):

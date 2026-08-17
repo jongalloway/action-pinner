@@ -262,7 +262,7 @@ export class ActionResolver {
     });
 
     const exactBranch = branchMatches.data.find((match) => match.ref === `refs/heads/${ref}`);
-    if (exactBranch && exactBranch.object.sha !== commit.data.sha) {
+    if (exactBranch) {
       throw new AmbiguousRefError(`${owner}/${repo}@${ref}`, [
         { sha: commit.data.sha, source: preferredTag.ref },
         { sha: exactBranch.object.sha, source: exactBranch.ref }
@@ -420,9 +420,10 @@ function selectPreferredTag(
 
 function isValidTagCandidate(requestedRef: string, tagName: string): boolean {
   return (
-    tagName === requestedRef ||
-    tagName.startsWith(`${requestedRef}.`) ||
-    tagName.startsWith(`${requestedRef}-`) ||
-    tagName.startsWith(`${requestedRef}_`)
+    requestedRef.length > 0 &&
+    (tagName === requestedRef ||
+      tagName.startsWith(`${requestedRef}.`) ||
+      tagName.startsWith(`${requestedRef}-`) ||
+      tagName.startsWith(`${requestedRef}_`))
   );
 }

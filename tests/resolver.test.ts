@@ -133,6 +133,37 @@ describe("ActionResolver", () => {
       }
     });
   });
+
+  it("fails closed when an ambiguous ref also has an exact branch with the same SHA", async () => {
+    const sha = "2222222222222222222222222222222222222222";
+    const getCommit = vi
+      .fn()
+      .mockRejectedValueOnce({
+        status: 422,
+        message: "Reference is ambiguous"
+      })
+      .mockResolvedValueOnce({ data: { sha } });
+    const listMatchingRefs = vi.fn().mockImplementation(({ ref }: { ref: string }) => {
+      if (ref === "tags/v1") {
+        return Promise.resolve({
+          data: [makeRef("refs/tags/v1.0.0", sha)]
+        });
+      }
+
+      return Promise.resolve({
+        data: [makeRef("refs/heads/v1", sha)]
+      });
+    });
+
+    const resolver = new ActionResolver(undefined, {
+      repos: { getCommit },
+      git: { listMatchingRefs }
+    });
+
+    await expect(resolver.resolve(makeReference("actions/setup-node", "v1"))).rejects.toMatchObject({
+      name: "AmbiguousRefError"
+    });
+  });
 });
 
 function makeReference(action: string, ref: string): ActionReference {

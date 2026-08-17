@@ -282,7 +282,10 @@ function makeEvidence(
   originalRef: string,
   resolvedSha: string
 ): PinEvidence {
-  const sourceRepo = originalRef.split("@")[0];
+  const separator = originalRef.lastIndexOf("@");
+  const action = separator === -1 ? originalRef : originalRef.slice(0, separator);
+  const [owner, repo] = action.split("/");
+  const sourceRepo = owner && repo ? `${owner}/${repo}` : action;
   return {
     filePath: resolve(process.cwd(), ".github", "workflows", fileName),
     line,

@@ -132,6 +132,7 @@ describe("ActionResolver", () => {
         ]
       }
     });
+    expect(getCommit).toHaveBeenCalledTimes(1);
   });
 
   it("fails closed when an ambiguous ref also has an exact branch with the same SHA", async () => {
@@ -163,6 +164,7 @@ describe("ActionResolver", () => {
     await expect(resolver.resolve(makeReference("actions/setup-node", "v1"))).rejects.toMatchObject({
       name: "AmbiguousRefError"
     });
+    expect(getCommit).toHaveBeenCalledTimes(1);
   });
 });
 

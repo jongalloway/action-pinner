@@ -255,19 +255,19 @@ export class ActionResolver {
       return undefined;
     }
 
+    const exactBranch = branchMatches.data.find((match) => match.ref === `refs/heads/${ref}`);
+    if (exactBranch) {
+      throw new AmbiguousRefError(`${owner}/${repo}@${ref}`, [
+        { sha: preferredTag.sha, source: preferredTag.ref },
+        { sha: exactBranch.object.sha, source: exactBranch.ref }
+      ]);
+    }
+
     const commit = await this.octokit.repos.getCommit({
       owner,
       repo,
       ref: `tags/${preferredTag.name}`
     });
-
-    const exactBranch = branchMatches.data.find((match) => match.ref === `refs/heads/${ref}`);
-    if (exactBranch) {
-      throw new AmbiguousRefError(`${owner}/${repo}@${ref}`, [
-        { sha: commit.data.sha, source: preferredTag.ref },
-        { sha: exactBranch.object.sha, source: exactBranch.ref }
-      ]);
-    }
 
     const result: ResolutionResult = {
       original: `${owner}/${repo}@${ref}`,

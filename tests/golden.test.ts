@@ -28,7 +28,7 @@ describe("golden outputs", () => {
     vi.setSystemTime(new Date("2026-08-17T23:37:14.238Z"));
 
     const getCommit = vi.fn().mockResolvedValue({
-      data: { sha: "34e11487abcdef0123456789abcdef01234567" }
+      data: { sha: "34e11487abcdef0123456789abcdef0123456789" }
     });
     const resolver = new ActionResolver(undefined, {
       repos: { getCommit }
@@ -42,7 +42,7 @@ describe("golden outputs", () => {
           "original": "actions/checkout@v4",
           "resolutionMethod": "repos.getCommit",
           "resolvedAt": "2026-08-17T23:37:14.238Z",
-          "sha": "34e11487abcdef0123456789abcdef01234567",
+          "sha": "34e11487abcdef0123456789abcdef0123456789",
           "sourceRepo": "actions/checkout",
         }
       `);
@@ -85,7 +85,7 @@ describe("golden outputs", () => {
       ],
       makeResolver({
         "actions/checkout@v4": {
-          sha: "34e11487abcdef0123456789abcdef01234567",
+          sha: "34e11487abcdef0123456789abcdef0123456789",
           resolvedAt: "2026-08-17T23:37:14.238Z"
         },
         "actions/setup-node@v4": {
@@ -105,7 +105,7 @@ describe("golden outputs", () => {
         build:
           runs-on: ubuntu-latest
           steps:
-            - uses: actions/checkout@34e11487abcdef0123456789abcdef01234567 # v4 # existing comment
+            - uses: actions/checkout@34e11487abcdef0123456789abcdef0123456789 # v4 # existing comment
             - uses: 'actions/setup-node@49933ea5fedcba9876543210fedcba9876543210' # v4
             - uses: docker://alpine:3.20
             - uses: ./local-action"
@@ -122,7 +122,7 @@ describe("golden outputs", () => {
       ]),
       makePatch("ci.yml", [
         makeEvidence("ci.yml", 8, "actions/setup-node@v4", "49933ea5fedcba9876543210fedcba9876543210"),
-        makeEvidence("ci.yml", 7, "actions/checkout@v4", "34e11487abcdef0123456789abcdef01234567")
+        makeEvidence("ci.yml", 7, "actions/checkout@v4", "34e11487abcdef0123456789abcdef0123456789")
       ])
     ];
     const evidence = patches.flatMap((patch) => patch.evidence);
@@ -133,7 +133,7 @@ describe("golden outputs", () => {
     };
 
     expect(formatEvidence(patches)).toMatchInlineSnapshot(`
-      "- .github/workflows/ci.yml:7 actions/checkout@v4 -> 34e11487abcdef0123456789abcdef01234567 (source=actions/checkout, method=repos.getCommit, resolvedAt=2026-08-17T23:37:14.238Z)
+      "- .github/workflows/ci.yml:7 actions/checkout@v4 -> 34e11487abcdef0123456789abcdef0123456789 (source=actions/checkout, method=repos.getCommit, resolvedAt=2026-08-17T23:37:14.238Z)
       - .github/workflows/ci.yml:8 actions/setup-node@v4 -> 49933ea5fedcba9876543210fedcba9876543210 (source=actions/setup-node, method=repos.getCommit, resolvedAt=2026-08-17T23:37:14.238Z)
       - .github/workflows/release.yml:10 github/codeql-action/init@v3 -> 1111111111111111111111111111111111111111 (source=github/codeql-action/init, method=repos.getCommit, resolvedAt=2026-08-17T23:37:14.238Z)"
     `);
@@ -143,7 +143,7 @@ describe("golden outputs", () => {
       Generated at: 2026-08-17T23:37:14.238Z
       | File | Line | Action | Pinned SHA | Commit |
       |------|------|--------|------------|--------|
-      | .github/workflows/ci.yml | 7 | actions/checkout@v4 | \`34e11487abcdef0123456789abcdef01234567\` | [View](https://github.com/actions/checkout/commit/34e11487abcdef0123456789abcdef01234567) |
+      | .github/workflows/ci.yml | 7 | actions/checkout@v4 | \`34e11487abcdef0123456789abcdef0123456789\` | [View](https://github.com/actions/checkout/commit/34e11487abcdef0123456789abcdef0123456789) |
       | .github/workflows/ci.yml | 8 | actions/setup-node@v4 | \`49933ea5fedcba9876543210fedcba9876543210\` | [View](https://github.com/actions/setup-node/commit/49933ea5fedcba9876543210fedcba9876543210) |
       | .github/workflows/release.yml | 10 | github/codeql-action/init@v3 | \`1111111111111111111111111111111111111111\` | [View](https://github.com/github/codeql-action/init/commit/1111111111111111111111111111111111111111) |
 
@@ -194,8 +194,8 @@ describe("golden outputs", () => {
             <td>.github/workflows/ci.yml</td>
             <td>7</td>
             <td><code>actions/checkout@v4</code></td>
-            <td><code>34e11487abcdef0123456789abcdef01234567</code></td>
-            <td><a href="https://github.com/actions/checkout/commit/34e11487abcdef0123456789abcdef01234567">View commit</a></td>
+            <td><code>34e11487abcdef0123456789abcdef0123456789</code></td>
+            <td><a href="https://github.com/actions/checkout/commit/34e11487abcdef0123456789abcdef0123456789">View commit</a></td>
           </tr>
           <tr>
             <td>.github/workflows/ci.yml</td>

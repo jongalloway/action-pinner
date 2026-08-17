@@ -365,6 +365,7 @@ Rules:
 ## Security
 
 - **Fail closed:** unresolved refs, invalid exceptions, and policy violations fail enforcement by default.
+- **Deterministic ref selection:** if GitHub reports an ambiguous ref and multiple matching tags are valid for the requested version prefix, the resolver picks the longest valid tag name and uses lexicographic order as a stable tie-breaker. Valid candidates are the exact ref or tags that continue it with `.`, `-`, or `_`; exact branch/tag conflicts with different SHAs still fail closed.
 - **Token safe:** tokens are redacted from logs; use the smallest possible scopes.
 - **Deterministic output:** scans, rewrites, and fingerprints are stable on the same input.
 

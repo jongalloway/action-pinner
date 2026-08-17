@@ -11,6 +11,20 @@ export interface CommitLookupClient {
       ref: string;
     }) => Promise<{ data: { sha: string } }>;
   };
+  git?: {
+    listMatchingRefs: (args: {
+      owner: string;
+      repo: string;
+      ref: string;
+    }) => Promise<{
+      data: Array<{
+        ref: string;
+        object: {
+          sha: string;
+        };
+      }>;
+    }>;
+  };
 }
 
 export interface ResolverOptions {
@@ -181,6 +195,13 @@ export class ActionResolver {
         lastError = error;
         const status = this.getStatus(error);
 
+        if (status === 422 && this.isAmbiguousRef(error)) {
+          const result = await this.resolveAmbiguousRef(owner, repo, ref, cacheKey);
+          if (result) {
+            return result;
+          }
+        }
+
         // Handle authentication errors
         if (status === 401) {
           const message =
@@ -204,6 +225,61 @@ export class ActionResolver {
       MAX_ATTEMPTS,
       lastError instanceof Error ? lastError.message : String(lastError)
     );
+  }
+
+  private async resolveAmbiguousRef(
+    owner: string,
+    repo: string,
+    ref: string,
+    cacheKey: string
+  ): Promise<ResolutionResult | undefined> {
+    if (!this.octokit.git?.listMatchingRefs) {
+      return undefined;
+    }
+
+    const [tagMatches, branchMatches] = await Promise.all([
+      this.octokit.git.listMatchingRefs({
+        owner,
+        repo,
+        ref: `tags/${ref}`
+      }),
+      this.octokit.git.listMatchingRefs({
+        owner,
+        repo,
+        ref: `heads/${ref}`
+      })
+    ]);
+
+    const preferredTag = selectPreferredTag(ref, tagMatches.data);
+    if (!preferredTag) {
+      return undefined;
+    }
+
+    const commit = await this.octokit.repos.getCommit({
+      owner,
+      repo,
+      ref: `tags/${preferredTag.name}`
+    });
+
+    const exactBranch = branchMatches.data.find((match) => match.ref === `refs/heads/${ref}`);
+    if (exactBranch && exactBranch.object.sha !== commit.data.sha) {
+      throw new AmbiguousRefError(`${owner}/${repo}@${ref}`, [
+        { sha: commit.data.sha, source: preferredTag.ref },
+        { sha: exactBranch.object.sha, source: exactBranch.ref }
+      ]);
+    }
+
+    const result: ResolutionResult = {
+      original: `${owner}/${repo}@${ref}`,
+      sha: commit.data.sha,
+      comment: preferredTag.name,
+      sourceRepo: `${owner}/${repo}`,
+      resolutionMethod: `${RESOLUTION_METHOD} (${preferredTag.ref})`,
+      resolvedAt: new Date().toISOString(),
+      githubApiUrl: this.getBaseUrl()
+    };
+    this.cache.set(cacheKey, result);
+    return result;
   }
 
   private isRetryable(error: unknown): boolean {
@@ -292,7 +368,61 @@ export class ActionResolver {
 
     return /secondary rate limit/i.test(error.message);
   }
+
+  private isAmbiguousRef(error: unknown): boolean {
+    if (!error || typeof error !== "object") {
+      return false;
+    }
+
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && /ambiguous/i.test(message)) {
+      return true;
+    }
+
+    const responseMessage = (error as { response?: { data?: { message?: unknown } } }).response?.data
+      ?.message;
+    return typeof responseMessage === "string" && /ambiguous/i.test(responseMessage);
+  }
 }
 
 export { AmbiguousRefError, UnresolvedRefError } from "./types.js";
 export { applyNetrcAuth, redactNetrcAuth } from "./netrc-auth.js";
+
+function selectPreferredTag(
+  requestedRef: string,
+  matches: Array<{ ref: string; object: { sha: string } }>
+): { name: string; ref: string; sha: string } | undefined {
+  const prefix = "refs/tags/";
+  const validTags = matches
+    .map((match) => {
+      if (!match.ref.startsWith(prefix)) {
+        return undefined;
+      }
+
+      const name = match.ref.slice(prefix.length);
+      if (!isValidTagCandidate(requestedRef, name)) {
+        return undefined;
+      }
+
+      return {
+        name,
+        ref: match.ref,
+        sha: match.object.sha
+      };
+    })
+    .filter((tag): tag is { name: string; ref: string; sha: string } => Boolean(tag));
+
+  return validTags.sort((left, right) => {
+    const lengthComparison = right.name.length - left.name.length;
+    return lengthComparison === 0 ? left.name.localeCompare(right.name) : lengthComparison;
+  })[0];
+}
+
+function isValidTagCandidate(requestedRef: string, tagName: string): boolean {
+  return (
+    tagName === requestedRef ||
+    tagName.startsWith(`${requestedRef}.`) ||
+    tagName.startsWith(`${requestedRef}-`) ||
+    tagName.startsWith(`${requestedRef}_`)
+  );
+}

@@ -135,7 +135,7 @@ describe("golden outputs", () => {
     expect(formatEvidence(patches)).toMatchInlineSnapshot(`
       "- .github/workflows/ci.yml:7 actions/checkout@v4 -> 34e11487abcdef0123456789abcdef0123456789 (source=actions/checkout, method=repos.getCommit, resolvedAt=2026-08-17T23:37:14.238Z)
       - .github/workflows/ci.yml:8 actions/setup-node@v4 -> 49933ea5fedcba9876543210fedcba9876543210 (source=actions/setup-node, method=repos.getCommit, resolvedAt=2026-08-17T23:37:14.238Z)
-      - .github/workflows/release.yml:10 github/codeql-action/init@v3 -> 1111111111111111111111111111111111111111 (source=github/codeql-action/init, method=repos.getCommit, resolvedAt=2026-08-17T23:37:14.238Z)"
+      - .github/workflows/release.yml:10 github/codeql-action/init@v3 -> 1111111111111111111111111111111111111111 (source=github/codeql-action, method=repos.getCommit, resolvedAt=2026-08-17T23:37:14.238Z)"
     `);
 
     expect(formatEvidenceMarkdown(evidence, fingerprint)).toMatchInlineSnapshot(`
@@ -145,7 +145,7 @@ describe("golden outputs", () => {
       |------|------|--------|------------|--------|
       | .github/workflows/ci.yml | 7 | actions/checkout@v4 | \`34e11487abcdef0123456789abcdef0123456789\` | [View](https://github.com/actions/checkout/commit/34e11487abcdef0123456789abcdef0123456789) |
       | .github/workflows/ci.yml | 8 | actions/setup-node@v4 | \`49933ea5fedcba9876543210fedcba9876543210\` | [View](https://github.com/actions/setup-node/commit/49933ea5fedcba9876543210fedcba9876543210) |
-      | .github/workflows/release.yml | 10 | github/codeql-action/init@v3 | \`1111111111111111111111111111111111111111\` | [View](https://github.com/github/codeql-action/init/commit/1111111111111111111111111111111111111111) |
+      | .github/workflows/release.yml | 10 | github/codeql-action/init@v3 | \`1111111111111111111111111111111111111111\` | [View](https://github.com/github/codeql-action/commit/1111111111111111111111111111111111111111) |
 
       ## Run fingerprint
 
@@ -209,7 +209,7 @@ describe("golden outputs", () => {
             <td>10</td>
             <td><code>github/codeql-action/init@v3</code></td>
             <td><code>1111111111111111111111111111111111111111</code></td>
-            <td><a href="https://github.com/github/codeql-action/init/commit/1111111111111111111111111111111111111111">View commit</a></td>
+            <td><a href="https://github.com/github/codeql-action/commit/1111111111111111111111111111111111111111">View commit</a></td>
           </tr>
         </tbody>
       </table>
